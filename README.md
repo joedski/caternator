@@ -12,6 +12,11 @@ The core concept is that of Alternation Sets, which each contain a set of Altern
 
 The grammar is designed to be hopefully easy to understand, but honestly I'm a programmer, so can't make any guarantees on that.  It's understandable to me, which means that like Ruby it may not do what *you* expect, but *I* am fine.  (wait, that applies to... most programming languages.  Slight retracted.)
 
+Usage
+-----
+
+Currently, this is meant to be used with Bower.  Maybe node support for server side fun?  I dunno.  Maybe.
+
 Dependencies
 ------------
 
