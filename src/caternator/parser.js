@@ -1,15 +1,21 @@
 // caternator/parser - Top-level Parser Thingy
 
 var tokenizer = require( 'caternator/tokenizer' );
+var grouper = require( 'caternator/grouper' );
 
 // String -> Thing
 function parse( input ) {
 	// - tokenize
 	var normalizedInput = normalize( input );
+	// TODO: This should be written some other way.  Probably just using forEach since I'm mutating things.
 	var lineList = splitLines( normalizedInput );
-	var tokensLineList = lineList.map( tokenizer.tokenize );
-	var identifiedTokensList = tokensLineList.map( tokenizer.identifyTokens );
-	var nestedTokensLineList = tokensLineList.map( nestTokens );
+	lineList = lineList.filter( isStatementLine );
+	lineList = lineList.map( tokenizer.tokenize );
+	lineList = lineList.map( tokenizer.identifyTokens );
+	lineList = lineList.map( nestTokens );
+	lineList = lineList.map( grouper.identifyGroups );
+
+	// var listWithNormedFns = nestedTokensLineList.map( normalizeFunctionCalls );
 
 	return {};
 }
@@ -35,12 +41,38 @@ function splitLines( normalizedInput :String ) :Array {
 	});
 }
 
-function nestTokens( tokensLine ) {
+// Assume all non-empty lines are statement lines. (no comments yet...)
+function isStatementLine( line ) {
+	// TODO: Should probably add comments at some point.
+	if( isEmptyLine( line ) ) {
+		return false;
+	}
+
+	return true;
+}
+
+function isEmptyLine( line ) {
+	if( line.string.replace( /\s+/g, '' ) != '' )
+		return true;
+	else
+		return false;
+}
+
+function nestTokens( line ) {
 	var resultantNestedTokens = initResultantNestedTokens();
 
-	tokensLine.tokens.forEach( function step( token, index ) {
-		// body...
-	})
+	// Not functional-style, but hopefully easy to understand.
+	line.tokens.forEach( function step( token, index ) {
+		switch( token.type ) {
+			case 'group begin': resultantNestedTokens.addDeeper(); break;
+			case 'group end': resultantNestedTokens.shallower(); break;
+			default: resultantNestedTokens.add( token ); break;
+		}
+	});
+
+	line.nestedTokens = resultantNestedTokens;
+
+	return line;
 }
 
 function initResultantNestedTokens() {
@@ -50,15 +82,19 @@ function initResultantNestedTokens() {
 		r[ pn ] = resultantNestedTokensPrototype[ pn ];
 	}
 
+	r.path = [];
+	r.top();
+
 	return r;
 }
 
 var resultantNestedTokensPrototype = {
 	addDeeper: function() { this.add( [] ).deeper(); return this; },
-	add: function( item ) { this.resolve().push( item ); return this; },
-	deeper: function() { this.path.push( this.resolve().length - 1 ); return this; },
-	shallower: function() { this.path.pop(); return this; },
-	top: function() { this.path.length = 0; return this; },
+	add: function( item ) { this.currentEnd.push( item ); return this; },
+	deeper: function() { this.path.push( this.resolve().length - 1 ); this.currentEnd = this.resolve(); return this; },
+	shallower: function() { this.path.pop(); this.currentEnd = this.resolve(); return this; },
+	top: function() { this.path.length = 0; this.currentEnd = this.resolve(); return this; },
+	currentEnd: null,
 	resolve: function() {
 		var goal = this;
 		var pi, pl;
@@ -70,3 +106,16 @@ var resultantNestedTokensPrototype = {
 		return goal;
 	}
 };
+
+// function normalizeFunctionCalls( line ) {
+// 	function normalizeFnsInGroup( group ) {
+// 		// if Function Call is followed by Group, next Function Call.
+// 		// if Function Call is followed by 
+// 	}
+
+// 	normalizeFnsInGroup( line.nestedTokens );
+
+// 	return line;
+// }
+
+module.exports.parse = parse;

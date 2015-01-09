@@ -1,13 +1,13 @@
 // caternator/tokenizer - Breaks the input into tokens!
 
-function tokenize( lineContainer ) {
-	lineContainer.tokens = splitTokensFromLine( normalizeLine( lineContainer.string ) );
+function tokenize( line ) {
+	line.rawTokens = splitTokensFromLine( normalizeLine( line.string ) );
 
-	return lineContainer;
+	return line;
 }
 
-function normalizeLine( line ) {
-	return line.replace( /^\s+|\s+$/g, '' );
+function normalizeLine( lineString ) {
+	return lineString.replace( /^\s+|\s+$/g, '' );
 }
 
 function splitTokensFromLine( line ) {
@@ -36,11 +36,33 @@ function splitTokensFromLine( line ) {
 	return tokens;
 }
 
-function identifyTokens( lineContainer ) {
-	// something with lineContainer.tokens.
-	lineContainer.identifiedTokens = lineContainer.tokens.map( function identifySingleToken( token, index ) {
-		// ...
-	})
+function identifyTokens( line ) {
+	// something with line.rawTokens.
+	line.tokens = line.rawTokens.map( function identifySingleToken( token, index ) {
+		if( token == '(' ) {
+			return { type: 'group begin' };
+		}
+		else if( token == ')' ) {
+			return { type: 'group end' };
+		}
+		else if( token == '=' ) {
+			return { type: 'assign' };
+		}
+		else if( token.match( /^\$/ ) ) {
+			return { type: 'variable', value: token };
+		}
+		else if( token.match( /^@/ ) ) {
+			return { type: 'function', value: token };
+		}
+		else if( token.match( /^#/ ) ) {
+			return { type: 'metadata', value: token };
+		}
+		else {
+			return { type: 'word', value: token };
+		}
+	});
+
+	return line;
 }
 
 module.exports.tokenize = tokenize;
