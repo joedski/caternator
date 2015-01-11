@@ -1,6 +1,7 @@
 // caternator/parser - Top-level Parser Thingy
 
 var tokenizer = require( 'caternator/tokenizer' );
+var nester = require( 'caternator/nester' );
 var grouper = require( 'caternator/grouper' );
 
 // String -> Thing
@@ -12,7 +13,7 @@ function parse( input ) {
 	lineList = lineList.filter( isStatementLine );
 	lineList = lineList.map( tokenizer.tokenize );
 	lineList = lineList.map( tokenizer.identifyTokens );
-	lineList = lineList.map( nestTokens );
+	lineList = lineList.map( nester.nestTokens );
 	lineList = lineList.map( grouper.identifyGroups );
 
 	// var listWithNormedFns = nestedTokensLineList.map( normalizeFunctionCalls );
@@ -57,65 +58,5 @@ function isEmptyLine( line ) {
 	else
 		return false;
 }
-
-function nestTokens( line ) {
-	var resultantNestedTokens = initResultantNestedTokens();
-
-	// Not functional-style, but hopefully easy to understand.
-	line.tokens.forEach( function step( token, index ) {
-		switch( token.type ) {
-			case 'group begin': resultantNestedTokens.addDeeper(); break;
-			case 'group end': resultantNestedTokens.shallower(); break;
-			default: resultantNestedTokens.add( token ); break;
-		}
-	});
-
-	line.nestedTokens = resultantNestedTokens;
-
-	return line;
-}
-
-function initResultantNestedTokens() {
-	var r = [], pn;
-
-	for( pn in resultantNestedTokensPrototype ) {
-		r[ pn ] = resultantNestedTokensPrototype[ pn ];
-	}
-
-	r.path = [];
-	r.top();
-
-	return r;
-}
-
-var resultantNestedTokensPrototype = {
-	addDeeper: function() { this.add( [] ).deeper(); return this; },
-	add: function( item ) { this.currentEnd.push( item ); return this; },
-	deeper: function() { this.path.push( this.resolve().length - 1 ); this.currentEnd = this.resolve(); return this; },
-	shallower: function() { this.path.pop(); this.currentEnd = this.resolve(); return this; },
-	top: function() { this.path.length = 0; this.currentEnd = this.resolve(); return this; },
-	currentEnd: null,
-	resolve: function() {
-		var goal = this;
-		var pi, pl;
-
-		for( pi = 0, pl = this.path.length; pi < pl; ++pi ) {
-			goal = goal[ this.path[ pi ] ];
-		}
-
-		return goal;
-	}
-};
-
-// function normalizeFunctionCalls( line ) {
-// 	function normalizeFnsInGroup( group ) {
-// 		// if Function Call is followed by Group, next Function Call.
-// 		// if Function Call is followed by 
-// 	}
-
-// 	normalizeFnsInGroup( line.nestedTokens );
-
-// 	return line;
-// }
 
 module.exports.parse = parse;

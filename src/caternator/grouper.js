@@ -1,6 +1,13 @@
 // caternator/grouper - Creates Specific Groups from Identified Tokens and Plain Groups.
 // Has nothing to do with fish.
 
+// process:
+// - calls group matcher to get type of group.
+// - creates specific group object for type of group.
+// - recur on any sub groups in group.
+
+var matcher = require( 'caternator/group-matcher' );
+
 var groupTypes = {
 	plain: 'plain',
 	metadata: 'metadata',
@@ -30,7 +37,7 @@ function identifyGroupsInItems( nestedTokens ) {
 		else {
 			return plainGroup( item );
 		}
-	})
+	});
 }
 
 function plainGroup( nestedTokens ) {
