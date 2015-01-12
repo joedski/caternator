@@ -1,10 +1,80 @@
 // caternator/grouper - Creates Specific Groups from Identified Tokens and Plain Groups.
 // Has nothing to do with fish.
 
-// process:
-// - calls group matcher to get type of group.
-// - creates specific group object for type of group.
-// - recur on any sub groups in group.
+// Identify Groups turns generic groups/arrays into Groups structured to make
+// creation of the actual Runtime Objects mostly plug and play.
+
+// Types of Groups
+// ===============
+// 
+// All groups have the property 'type' set to the value 'group'.
+// 
+// Plain Group
+// -----------
+// 
+// The most basic of Groups, this has the following properties:
+// - groupType = 'plain'
+// - items: Array; all of the items contained within this Group.
+//     Any sub-groups in this list of items are also run through identifyGroups().
+// 
+// Alternation Delimiter Group
+// ---------------------------
+// 
+// Alternation Delimiters may have an Optional Condition Group attached to them.
+// They themselves have the following properties:
+// - groupType = 'alternationDelimiter'
+// - condition: ConditionGroup | null; an optional Condition Group.
+// 
+// Condition Group
+// ---------------
+// 
+// Condition Groups hold the information on what condition, if any,
+// needs to be fulfilled for the Alternation it's attached to
+// to be considered valid.
+// They have the following properties:
+// - groupType = 'condition'
+// - subject: String; The variable name which is the subject of this condition.
+// - predicate: PredicateGroup; The predicate which is applied to the subject.
+// 
+// Predicate Group
+// ---------------
+// 
+// A Predicate Group holds the actual test which is applied to its parent
+// Condition Group's Subject.  They come in a few different flavors, detailed below.
+// 
+// ### 'is'-Type Predicates
+// 
+// An 'is'-type Predicate indicates a check on whether a Subject has certain metadatas defined on it,
+// implicitly with some value that is not the Null Group or the Word 'no'.
+// They have the following properties:
+// - groupType = 'predicate'
+// - predicateType = 'is'
+// - negated: Boolean; Whether or not the truth value returned by evaluation of this predicate
+//     should be negated.
+// - metadatas: Array<String>; The metadata names that the subject should have defined on it
+//     in order for this Predicate to evaluate to True.
+// 
+// ### 'has'-Type Predicates
+// 
+// A 'has'-type Predicate indicates a check on whether a Subject has an attached metadata either
+// defined and equal to a certain value, or undefined ('equal' to a Null Group.)
+// These have the following properties:
+// - groupType = 'predicate'
+// - predicateType = 'has'
+// - negated: Boolean; Whether or not the truth value returned by evaluation of this predicate
+//     should be negated.
+// - metadatas: Array<String>; The metadata names whose values will be checked against 
+//     this predicate's value.  Currently, this will only contain 1 metadata name.
+// - value: PlainGroup; The value to which the metadata's own value is compared.
+//     This will be converted to an Alternation Set or Constant later.  In the former case,
+//     the metadata has to match only one of the Alternation Set's Alternation Items to be valid.
+// 
+// Null Group
+// ----------
+// 
+// The simplest of all Groups, this represents an empty or null value.
+// It has but the following additional property:
+// - groupType = 'null'
 
 var tokenizer = require( './tokenizer' );
 var matcher = require( './group-matcher' );
@@ -39,7 +109,7 @@ function mapGroupMatchResult( groupMatchResult ) {
 		});
 	}
 	else {
-		return createGroup
+		return createGroup( groupMatchResult );
 	}
 }
 
@@ -137,8 +207,8 @@ function predicateGroup( predicateGroupMatchResult ) {
 			}
 		}()),
 
-		metadatas: predicateGroupMatchResult.metadatas,
-		value: predicateGroupMatchResult.rest.type == 'plain' ? predicateGroupMatchResult.rest : null
+		metadatas: predicateGroupMatchResult.metadatas.map( function unwrap( metadataToken ) { return metadataToken.value; }),
+		value: predicateGroupMatchResult.rest.type == 'plain' ? plainGroup( predicateGroupMatchResult.rest ) : null
 	});
 }
 
