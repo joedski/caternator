@@ -7,3 +7,21 @@ The grammar that the Caternator uses is meant to be (mostly) regularized, and pr
 
 As far as feeding it input from an app, really all you need to do is stick all your input together into one giant string (with items separated by new-lines) and feed it into the parser.
 
+
+
+Detailed Reference
+------------------
+
+### Statements
+
+### Alternation Sets and Alternation Items
+
+#### Optional Sub-Alternations
+
+#### Conditional Alternation Items
+
+### Variables
+
+### Functions
+
+### Metadata

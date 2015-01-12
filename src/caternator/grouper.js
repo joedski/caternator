@@ -91,10 +91,55 @@ function plainGroup( groupMatchResult ) {
 function conditionGroup( groupMatchResult ) {
 	return group( 'condition', {
 		subject: groupMatchResult.variables[ 0 ].value,
-		// one of 'predicateEquals', 'predicateIs', 'predicateIsNot', 'predicateHas', 'predicateDoesNotHave'.
-		predicateType: groupMatchResult.rest.type,
+		predicate: predicateGroup( groupMatchResult.rest )
+	});
+}
 
-	})
+function predicateGroup( predicateGroupMatchResult ) {
+	return group( 'predicate', {
+		// one of 'predicateEquals', 'predicateIs', 'predicateIsNot', 'predicateHas', 'predicateDoesNotHave'.
+		predicateType: (function mapPredicateType() {
+			switch( predicateGroupMatchResult.type ) {
+				case 'predicateEquals': return 'equals'; break;
+
+				case 'predicateIs':
+				case 'predicateIsNot':
+					return 'is';
+					break;
+
+				case 'predicateHas':
+				case 'predicateDoesNotHave':
+					return 'has';
+					break;
+
+				default:
+					throw new GroupMatchError( '"' + predicateGroupMatchResult.type + '" is not a valid condition predicate type.', {
+						groupMatchResult: predicateGroupMatchResult
+					});
+			}
+		}()),
+
+		negated: (function mapPredicateNegation() {
+			switch( predicateGroupMatchResult.type ) {
+				case 'predicateEquals':
+				case 'predicateIs':
+				case 'predicateHas':
+					return false;
+
+				case 'predicateIsNot':
+				case 'predicateDoesNotHave':
+					return true;
+
+				default:
+					throw new GroupMatchError( '"' + predicateGroupMatchResult.type + '" is not a valid condition predicate type.', {
+						groupMatchResult: predicateGroupMatchResult
+					});
+			}
+		}()),
+
+		metadatas: predicateGroupMatchResult.metadatas,
+		value: predicateGroupMatchResult.rest.type == 'plain' ? predicateGroupMatchResult.rest : null
+	});
 }
 
 
