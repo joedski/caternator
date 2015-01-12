@@ -8,65 +8,60 @@
 
 var matcher = require( 'caternator/group-matcher' );
 
-var groupTypes = {
-	plain: 'plain',
-	metadata: 'metadata',
-	alternationItemDelimiter: 'alternation item delimiter',
-	condition: 'condition'
-};
-
-function identifyGroups( line ) {
-	// line.nestedTokens...
-
-	line.groups = plainGroup( line.nestedTokens );
-
-	return line;
+function identifyGroups( nestedLineTokens ) {
+	return plainGroup( nestedLineTokens );
 }
 
 function identifyGroupsInItems( nestedTokens ) {
 	var identifiedItems = nestedTokens.map( function identifyItem( item ) {
-		if( (typeof item) != 'array' ) {
+		// This only works because we're directly creating the arrays,
+		// so we know we're not dealing with just Array-Like Objects.
+		if( foo.constructor != Array ) {
 			return item;
 		}
-		else if( isMetadataGroup( item ) ) {
-			return metadataGroup( item );
-		}
-		else if( isAlternationDelimiterGroup( item ) ) {
-			return alternationDelimiterGroup( item );
-		}
 		else {
-			return plainGroup( item );
+			return mapGroupMatchResult( matcher.matchItems( item ) );
 		}
 	});
 }
 
-function plainGroup( nestedTokens ) {
-	var group = {};
-	group.type = groupTypes.plain;
-	group.items = identifyGroupsInItems( nestedTokens );
-	return group;
+// Maps a GroupMatchResult to a friendlier data structure.
+function mapGroupMatchResult( groupMatchResult ) {
+	var createGroup = {
+		'metadata': metadataGroup,
+		'alternationDelimiter': alternationDelimiterGroup,
+		'null': nullGroup,
+		'plain': plainGroup
+	}[ groupMatchResult.type ];
+
+	if( ! createGroup ) {
+		throw new GroupMatchError( '"' + groupMatchResult.type + '" is not a valid group type.', {
+			groupMatchResult: groupMatchResult
+		});
+	}
+	else {
+		return createGroup
+	}
 }
 
-function metadataGroup( nestedTokens ) {
-	var group = {};
-	group.type = groupTypes.metadata;
-	// TODO: no items.  map :Object { '#key': value }...
-	group.map = {};
-	return group;
+function metadataGroup( groupMatchResult ) {
+	// body...
 }
 
-function alternationDelimiterGroup( nestedTokens ) {
-	var group = {};
-	group.type = groupTypes.alternationItemDelimiter;
-	// TODO: Get condition...
-	group.condition = null;
-	return group;
+
+
+function GroupMatchError( message, options ) {
+	options = options || {};
+
+	Error.call( this, message );
+
+	this.name = 'GroupMatchError';
+	this.groupMatchResult = options.groupMatchResult;
 }
 
-function conditionGroup( nestedTokens ) {
-	var group = {};
-	group.type = groupTypes.condition;
-	// TODO: Create condition...
-	group.condition = {};
-	return group;
-}
+GroupMatchError.prototype = new Error();
+
+
+
+exports.identifyGroups = identifyGroups;
+exports.GroupMatchError = GroupMatchError;
