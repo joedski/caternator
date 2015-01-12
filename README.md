@@ -15,7 +15,7 @@ The grammar is designed to be hopefully easy to understand, but honestly I'm a p
 Usage
 -----
 
-Currently, this is meant to be used with Bower.  Maybe node support for server side fun?  I dunno.  Maybe.
+Currently, this is meant to be used with Bower.  Maybe node support for server side fun?  I dunno.  Maybe.  But right now I'm testing it in Node, so maybe whatever default AMD Brunch uses won't like the paths.  Wulp!
 
 Dependencies
 ------------
