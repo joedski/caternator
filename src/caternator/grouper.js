@@ -68,6 +68,19 @@
 // - value: PlainGroup; The value to which the metadata's own value is compared.
 //     This will be converted to an Alternation Set or Constant later.  In the former case,
 //     the metadata has to match only one of the Alternation Set's Alternation Items to be valid.
+//     
+// ### 'equals'-Type Predicates
+// 
+// An 'equals'-type Predicate indicates a check on the actual value that the subject
+// has Selected to.  Note that this isn't very useful and isn't fully supported yet.
+// These have the following properties:
+// - groupType = 'predicate'
+// - predicateType = 'equals'
+// - negated: Boolean; Whether or not the truth value returned by evaluation of this predicate
+//     should be negated.
+// - value: PlainGroup; The value(s) to which the Subject's own values will be compared.
+//     As value is a PlainGroup, it will be converted into an Alternation Set or Constant,
+//     and in the former case need only match one of the Alternation Items within the Set.
 // 
 // Null Group
 // ----------
