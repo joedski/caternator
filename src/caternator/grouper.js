@@ -6,23 +6,22 @@
 // - creates specific group object for type of group.
 // - recur on any sub groups in group.
 
-var matcher = require( 'caternator/group-matcher' );
+var tokenizer = require( './tokenizer' );
+var matcher = require( './group-matcher' );
 
 function identifyGroups( nestedLineTokens ) {
-	return plainGroup( nestedLineTokens );
+	return nestedLineTokens.map( identifyItem );
 }
 
-function identifyGroupsInItems( nestedTokens ) {
-	var identifiedItems = nestedTokens.map( function identifyItem( item ) {
-		// This only works because we're directly creating the arrays,
-		// so we know we're not dealing with just Array-Like Objects.
-		if( foo.constructor != Array ) {
-			return item;
-		}
-		else {
-			return mapGroupMatchResult( matcher.matchItems( item ) );
-		}
-	});
+function identifyItem( item ) {
+	// This only works because we're directly creating the arrays,
+	// so we know we're not dealing with just Array-Like Objects.
+	if( foo.constructor != Array ) {
+		return item;
+	}
+	else {
+		return mapGroupMatchResult( matcher.matchItems( item ) );
+	}
 }
 
 // Maps a GroupMatchResult to a friendlier data structure.
@@ -44,8 +43,58 @@ function mapGroupMatchResult( groupMatchResult ) {
 	}
 }
 
+function group( groupType, options ) {
+	options.type = 'group';
+	options.groupType = groupType;
+
+	return options;
+}
+
 function metadataGroup( groupMatchResult ) {
-	// body...
+	return group( 'metadata', {
+		metadataMap: (function createMetadataMap() {
+			var map = {};
+
+			if( groupMatchResult.metadatas.length > 1 ) {
+				groupMatchResult.metadatas.forEach( function setMetadataMapping( metadataToken ) {
+					// The default value for a metadata is always 'yes'.
+					map[ metadataToken.value ] = plainGroupFromWords([ 'yes' ]);
+				});
+			}
+			else {
+				map[ groupMatchResult.metadatas[ 0 ].value ] = plainGroup( groupMatchResult.rest );
+			}
+		}())
+	});
+}
+
+function alternationDelimiterGroup( groupMatchResult ) {
+	return group( 'alternationDelimiter', {
+		condition: groupMatchResult.rest ? conditionGroup( groupMatchResult.rest ) || null
+	});
+}
+
+function nullGroup( groupMatchResult ) {
+	return group( 'null' );
+}
+
+function plainGroupFromWords( words ) {
+	return plainGroup( matcher.matchItems( tokenizer.identifyTokens( words ) ) );
+}
+
+function plainGroup( groupMatchResult ) {
+	return group( 'plain', {
+		items: identifyGroups( groupMatchResult.items )
+	});
+}
+
+function conditionGroup( groupMatchResult ) {
+	return group( 'condition', {
+		subject: groupMatchResult.variables[ 0 ].value,
+		// one of 'predicateEquals', 'predicateIs', 'predicateIsNot', 'predicateHas', 'predicateDoesNotHave'.
+		predicateType: groupMatchResult.rest.type,
+
+	})
 }
 
 

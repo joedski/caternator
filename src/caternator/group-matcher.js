@@ -72,7 +72,9 @@ var groupSpecsMap = {
 	'condition': [
 		[ 'word:if', 'variable', 'rest:predicateEquals' ],
 		[ 'word:if', 'variable', 'rest:predicateIs' ],
-		[ 'word:if', 'variable', 'rest:predicateHas' ]
+		[ 'word:if', 'variable', 'rest:predicateIsNot' ],
+		[ 'word:if', 'variable', 'rest:predicateHas' ],
+		[ 'word:if', 'variable', 'rest:predicateDoesNotHave' ]
 	],
 
 	// 3 separate predicates make the type of predicate unambiguous,
@@ -80,11 +82,20 @@ var groupSpecsMap = {
 	'predicateEquals': [
 		[ 'assign', 'rest:plain' ]
 	],
+	// No negated form of equals?
 	'predicateIs': [
 		[ 'word:is', 'rest<metadata>' ]
 	],
+	'predicateIsNot': [
+		[ 'word:is', 'word:not', 'rest<metadata>' ],
+		[ 'word:isn\'t', 'rest<metadata>' ]
+	],
 	'predicateHas': [
 		[ 'word:has', 'metadata', 'assign', 'rest:plain' ]
+	],
+	'predicateDoesNotHave': [
+		[ 'word:does', 'word:not', 'word:have', 'metadata', 'assign', 'rest:plain' ],
+		[ 'word:doesn\'t', 'word:have', 'metadata', 'assign', 'rest:plain' ]
 	]
 };
 
