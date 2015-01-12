@@ -1,8 +1,8 @@
 // caternator/parser - Top-level Parser Thingy
 
-var tokenizer = require( 'caternator/tokenizer' );
-var nester = require( 'caternator/nester' );
-var grouper = require( 'caternator/grouper' );
+var tokenizer = require( './tokenizer' );
+var nester = require( './nester' );
+var grouper = require( './grouper' );
 
 // String -> Thing
 function parse( input ) {
@@ -22,12 +22,11 @@ function parse( input ) {
 }
 
 // normalize line-endings
-// space out certain characters: "(", ")", "="
 function normalize( inputString :String ) :String {
 	return inputString
-		.replace( /\r\n?/g, '\n' ) // normalize line endings.  (theoretically shouldn't matter?)
-		.replace( /[\(\)=]/g, ' $& ' ) // space out tokens.
-		;
+		// .replace( /\r\n?/g, '\n' ) // normalize line endings.  (theoretically shouldn't matter?)
+		// .replace( /\n+$/, '' )
+		// ;
 }
 
 function splitLines( normalizedInput :String ) :Array {

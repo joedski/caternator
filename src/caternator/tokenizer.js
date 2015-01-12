@@ -7,7 +7,7 @@ function tokenize( line ) {
 }
 
 function normalizeLine( lineString ) {
-	return lineString.replace( /^\s+|\s+$/g, '' );
+	return lineString.replace( /[\(\)=]/g, ' $& ' ).replace( /^\s+|\s+$/g, '' );
 }
 
 function splitTokensFromLine( line ) {
