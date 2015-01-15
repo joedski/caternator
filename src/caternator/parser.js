@@ -6,39 +6,48 @@ var grouper = require( './grouper' );
 
 // String -> Thing
 function parse( input ) {
-	// - tokenize
-	var normalizedInput = normalize( input );
-	// TODO: This should be written some other way.  Probably just using forEach since I'm mutating things.
-	var lineList = splitLines( normalizedInput );
-	lineList = lineList.filter( isStatementLine );
-	lineList = lineList.map( tokenizer.tokenize );
-	lineList = lineList.map( tokenizer.identifyTokens );
-	lineList = lineList.map( nester.nestTokens );
-	lineList = lineList.map( grouper.identifyGroups );
-
-	// var listWithNormedFns = nestedTokensLineList.map( normalizeFunctionCalls );
+	var rawLineList = splitLines( input );
+	var lineList = rawLineList.map( parseRawLine );
 
 	return {};
 }
 
-// normalize line-endings
-function normalize( inputString :String ) :String {
-	return inputString
-		// .replace( /\r\n?/g, '\n' ) // normalize line endings.  (theoretically shouldn't matter?)
-		// .replace( /\n+$/, '' )
-		// ;
+function splitLines( normalizedInput ) {
+	return normalizedInput.split( '\n' );
 }
 
-function splitLines( normalizedInput :String ) :Array {
-	var lines = normalizedInput.split( '\n' );
-	return lines.map( function addMeta( lineString, index ) {
-		return {
-			string: lineString,
-			meta: {
-				lineNumber: index
-			}
-		};
-	});
+function parseRawLine( rawLineString, index, rawLineList ) {
+	var line = {
+		string: rawLineString,
+		metadata: { lineNumber: index }
+	};
+
+	try {
+		if( isStatementLine( line ) ) {
+			line.type = 'statement';
+			line.rawTokens = tokenizer.tokenize( line.string );
+			line.flatTokens = tokenizer.identifyTokens( line.rawTokens );
+			line.nestedTokens = nester.nestTokens( line.flatTokens );
+			line.groupedTokens = grouper.identifyGroups( line.nestTokens );
+
+			// TODO: Identify statement type. (variable definition, function definition, output.)
+			line.statementType = '';
+		}
+		else if( isEmptyLine( line ) ) {
+			line.type = 'empty';
+		}
+		else {
+			line.type = 'invalid';
+		}
+	}
+	catch( err ) {
+		throw new LineParseError( 'Error trying to parse line ' + String( index ) + ': ' + e.message, {
+			line: line,
+			originalError: e
+		});
+	}
+
+	return line;
 }
 
 // Assume all non-empty lines are statement lines. (no comments yet...)
@@ -58,4 +67,21 @@ function isEmptyLine( line ) {
 		return false;
 }
 
-module.exports.parse = parse;
+
+
+function LineParseError( message, options ) {
+	options = options || {};
+
+	Error.call( this, message );
+
+	this.name = 'LineParseError';
+	this.line = options.line;
+	this.originalError = options.originalError;
+}
+
+LineParseError.prototype = new Error();
+
+
+
+exports.parse = parse;
+exports.LineParseError = LineParseError;

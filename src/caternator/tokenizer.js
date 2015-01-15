@@ -1,9 +1,7 @@
 // caternator/tokenizer - Breaks the input into tokens!
 
-function tokenize( line ) {
-	line.rawTokens = splitTokensFromLine( normalizeLine( line.string ) );
-
-	return line;
+function tokenize( rawLineString ) {
+	return splitTokensFromLine( normalizeLine( rawLineString ) );
 }
 
 function normalizeLine( lineString ) {
@@ -36,9 +34,8 @@ function splitTokensFromLine( line ) {
 	return tokens;
 }
 
-function identifyTokens( line ) {
-	// something with line.rawTokens.
-	line.tokens = line.rawTokens.map( function identifySingleToken( token, index ) {
+function identifyTokens( rawLineTokens ) {
+	return rawLineTokens.rawTokens.map( function identifySingleToken( token, index ) {
 		if( token == '(' ) {
 			return { type: 'group begin' };
 		}
@@ -61,11 +58,7 @@ function identifyTokens( line ) {
 			return { type: 'word', value: token };
 		}
 	});
-
-	return line;
 }
 
 module.exports.tokenize = tokenize;
 module.exports.identifyTokens = identifyTokens;
-
-// Token Wrapper Objects, too, like Assingment Indicator, Group Begin Indicator, etc.

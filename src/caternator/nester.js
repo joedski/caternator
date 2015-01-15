@@ -1,10 +1,10 @@
 // caternator/nester - Nests tokens into subseqs.
 
-function nestTokens( line ) {
+function nestTokens( lineTokens ) {
 	var resultantNestedTokens = initResultantNestedTokens();
 
 	// Not functional-style, but hopefully easy to understand.
-	line.tokens.forEach( function step( token, index ) {
+	lineTokens.forEach( function step( token, index ) {
 		switch( token.type ) {
 			case 'group begin': resultantNestedTokens.addDeeper(); break;
 			case 'group end': resultantNestedTokens.shallower(); break;
@@ -12,9 +12,7 @@ function nestTokens( line ) {
 		}
 	});
 
-	line.nestedTokens = resultantNestedTokens;
-
-	return line;
+	return resultantNestedTokens;
 }
 
 function initResultantNestedTokens() {

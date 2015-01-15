@@ -62,24 +62,40 @@ var groupSpecsMap = {
 		[ 'word:or', 'rest:condition' ],
 		[ 'rest:condition' ]
 	],
-	'condition': [
-		[ 'word:if', 'variable', 'rest:predicateEquals' ],
-		[ 'word:if', 'variable', 'rest:predicateIs' ],
-		[ 'word:if', 'variable', 'rest:predicateHas' ]
-	],
-	'predicateEquals': [
-		[ 'assign', 'rest:plain' ]
-	],
-	'predicateIs': [
-		[ 'word:is', 'rest<metadata>' ]
-	],
-	'predicateHas': [
-		[ 'word:has', 'metadata', 'assign', 'rest:plain' ]
-	],
 	'null': [
 		[],
 		[ 'word:none' ],
 		[ 'word:nothing' ]
+	],
+
+	// condition has 3 different forms, detailed below.
+	'condition': [
+		[ 'word:if', 'variable', 'rest:predicateEquals' ],
+		[ 'word:if', 'variable', 'rest:predicateIs' ],
+		[ 'word:if', 'variable', 'rest:predicateIsNot' ],
+		[ 'word:if', 'variable', 'rest:predicateHas' ],
+		[ 'word:if', 'variable', 'rest:predicateDoesNotHave' ]
+	],
+
+	// 3 separate predicates make the type of predicate unambiguous,
+	// meaning no duck-typing later.
+	'predicateEquals': [
+		[ 'assign', 'rest:plain' ]
+	],
+	// No negated form of equals?
+	'predicateIs': [
+		[ 'word:is', 'rest<metadata>' ]
+	],
+	'predicateIsNot': [
+		[ 'word:is', 'word:not', 'rest<metadata>' ],
+		[ 'word:isn\'t', 'rest<metadata>' ]
+	],
+	'predicateHas': [
+		[ 'word:has', 'metadata', 'assign', 'rest:plain' ]
+	],
+	'predicateDoesNotHave': [
+		[ 'word:does', 'word:not', 'word:have', 'metadata', 'assign', 'rest:plain' ],
+		[ 'word:doesn\'t', 'word:have', 'metadata', 'assign', 'rest:plain' ]
 	]
 };
 
@@ -88,18 +104,9 @@ var groupSpecCheckOrder = [ 'metadata', 'alternationDelimiter', 'null' ];
 
 // Always returns GroupMatchResult, never Null.
 function matchItems( items ) {
-	// something, anyway.
-	// matches items against each spec, as specified in groupSpecCheckOrder.
-	// First one to match, this adds that group type label to the results and returns it.
-	// If no group in the group spec check order matches, returns all items with the label "plain".
-	
 	var result = null;
 	var groupType;
-	// var groupType = groupSpecCheckOrder.find( function typeOfGroup( specType ) {
-	// 	result = matchItemsAgainstType( items, specType );
-	// 	return !!result;
-	// });
-	
+
 	groupSpecCheckOrder.forEach( function typeOfGroup( specType ) {
 		if( result ) return;
 
@@ -132,14 +139,7 @@ function matchItemsAgainstType( items, specType ) {
 }
 
 function matchItemsAgainst( items, specs ) {
-	// convert spec into series of executable predicates.
-	// if last spec item is some version of 'rest' then include that...
-	//     if have rest predicate, then slurp any left over items and pass into rest.
-	//     else, left over items fail the condition.  (default rest predicate of "must be no items left.")
-	// test items each in turn.
-	// since each item corresponds to a specific spec predicate,
-	// the length of the spec (less a rest spec) can be sliced from the items.
-
+	// Creating a bunch of functions.  Slow?  Maybe.
 	var restSpec = getRestSpec( specs );
 	var initialSpecs = getInitialSpecs( specs );
 	var initialPredicates = createPredicates( initialSpecs );
@@ -202,6 +202,7 @@ function getInitialSpecs( specs ) {
 // Creating one-off fns is probably the slowest way to do it... (but maybe not for mighty V8, stronk JS engine?)
 function createPredicates( specs ) {
 	return specs.map( function specToPredicate( spec, index ) {
+		var err;
 		var match;
 
 		var specWordIndex = 0;
@@ -235,17 +236,25 @@ function createPredicates( specs ) {
 			};
 		}
 		else if( spec.match( /^rest/ ) ) {
-			// Might change later.
-			throw new Error( 'MatchError: Invalid Rest Spec at ' + String( index ) + ': Rest Spec must occur only at end of Spec List.' );
+			// Might change later?  Then again, I don't want to have to keep trying things.
+			// Of course, if only one 'rest' spec is allowed per spec line,
+			// then it becomes just a matter of evaluating finalSpecs against finalItems,
+			// with restItems being whatever's between the two.
+			throw new MatchError( 'Invalid Rest Spec at ' + String( index ) + ': Rest Spec must occur only at end of Spec List.', {
+				spec: spec
+			});
 		}
 		else {
-			throw new Error( 'MatchError: Invalid/Unknown Spec: ' + String( index ) + ': ' + String( spec ) + ' (spec list: ' + specs.join( ', ' ) + ')' );
+			throw new MatchError( 'Invalid/Unknown Spec: ' + String( index ) + ': ' + String( spec ) + ' (spec list: ' + specs.join( ', ' ) + ')' {
+				spec: spec
+			});
 		}
 	});
 }
 
 // Rest predicates are a bit different, in that rather than a boolean return, they return a Result or null.
 function createRestPredicate( restSpec ) {
+	var err;
 	var predicate, groupType, tokenType;
 
 	if( ! restSpec ) {
@@ -263,17 +272,15 @@ function createRestPredicate( restSpec ) {
 	}
 
 	if( restSpec.match( /^rest:/ ) ) {
-		// certain group type.
-
 		predicate = createRestGroupTypePredicate( restSpec );
 	}
 	else if( restSpec.match( /^rest</ ) ) {
-		// rest consists only of one kind of tokens.
-
 		predicate = createRestTokenTypePredicate( restSpec );
 	}
 	else {
-		throw new Error( 'MatchError: Invalid/Unknown Rest Spec: "' + String( restSpec ) + '"' );
+		throw new MatchError( 'Invalid/Unknown Rest Spec: "' + String( restSpec ) + '"', {
+			spec: restSpec
+		});
 	}
 
 	return predicate;
@@ -285,7 +292,9 @@ function createRestGroupTypePredicate( restSpec ) {
 	groupType = (/^rest:(.+)$/.exec( restSpec ) || [])[ 1 ];
 
 	if( ! groupType ) {
-		throw new Error( 'Predicate Error: No group type specified in rest spec "' + String( restSpec ) + '" for rest predicate.' );
+		throw new PredicateError( 'No group type specified in rest spec "' + String( restSpec ) + '" for rest predicate.', {
+			spec: restSpec
+		});
 	}
 
 	if( groupType == 'plain' ) {
@@ -302,7 +311,9 @@ function createRestGroupTypePredicate( restSpec ) {
 	}
 	else {
 		if( ! groupSpecsMap[ groupType ] ) {
-			throw new Error( 'Predicate Error: Unknown group type specified in rest spec "' + String( restSpec ) + '" for rest predicate.' );
+			throw new PredicateError( 'Unknown group type specified in rest spec "' + String( restSpec ) + '" for rest predicate.', {
+				spec: restSpec
+			});
 		}
 
 		predicate = function restAsGroupPredicate( rest ) {
@@ -322,7 +333,9 @@ function createRestTokenTypePredicate( restSpec ) {
 	tokenType = (/^rest<([a-z]+)>$/.exec( restSpec ) || [])[ 1 ];
 
 	if( ! tokenType ) {
-		throw new Error( 'Predicate Error: No token type specified in rest spec "' + String( restSpec ) + '" for rest predicate.' );
+		throw new PredicateError( 'No token type specified in rest spec "' + String( restSpec ) + '" for rest predicate.', {
+			spec: restSpec
+		});
 	}
 
 	predicate = function restWithTokenTypePredicate( rest ) {
@@ -387,4 +400,32 @@ function getFunctionsFromItems( items, specs ) {
 	return getTokensOfTypeFromItems( 'function', items, specs );
 }
 
+
+
+function MatchError( message, options ) {
+	options = options || {};
+
+	Error.call( this, message );
+
+	this.name = 'MatchError';
+	this.spec = options.spec;
+}
+
+MatchError.prototype = new Error();
+
+function PredicateError( message, options ) {
+	options = options || {};
+
+	Error.call( this, message );
+
+	this.name = 'PredicateError';
+	this.spec = options.spec;
+}
+
+PredicateError.prototype = new Error();
+
+
+
 exports.matchItems = matchItems;
+exports.MatchError = MatchError;
+exports.PredicateError = PredicateError;
