@@ -9,7 +9,12 @@ function parse( input ) {
 	var rawLineList = splitLines( input );
 	var lineList = rawLineList.map( parseRawLine );
 
-	return {};
+	return {
+		variableStatements: [],
+		functionStatements: [],
+		outputStatements: [],
+		lines: lineList
+	};
 }
 
 function splitLines( normalizedInput ) {
@@ -29,9 +34,10 @@ function parseRawLine( rawLineString, index, rawLineList ) {
 			line.flatTokens = tokenizer.identifyTokens( line.rawTokens );
 			line.nestedTokens = nester.nestTokens( line.flatTokens );
 			line.groupedTokens = grouper.identifyGroups( line.nestTokens );
+			line.statement = statementCompiler.compile( line.groupedTokens );
 
 			// TODO: Identify statement type. (variable definition, function definition, output.)
-			line.statementType = '';
+			// line.statementType = '';
 		}
 		else if( isEmptyLine( line ) ) {
 			line.type = 'empty';
@@ -40,7 +46,7 @@ function parseRawLine( rawLineString, index, rawLineList ) {
 			line.type = 'invalid';
 		}
 	}
-	catch( err ) {
+	catch( e ) {
 		throw new LineParseError( 'Error trying to parse line ' + String( index ) + ': ' + e.message, {
 			line: line,
 			originalError: e
