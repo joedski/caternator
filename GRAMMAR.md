@@ -24,4 +24,18 @@ Detailed Reference
 
 ### Functions
 
+Always wrap what you're applying your function to in parentheses, like so:
+
+    stuff (@funky (foo bar baz)) more stuff
+
+If you don't, the parser will do it for you.  If you put in this:
+
+    stuff (@funky foo bar baz) more stuff
+
+Then you might not like what you get:
+
+    stuff (@funky (foo) bar baz) more stuff
+
+
+
 ### Metadata
