@@ -165,9 +165,17 @@ function plainGroupFromWords( words ) {
 	return plainGroup( matcher.matchItems( tokenizer.identifyTokens( words ) ) );
 }
 
+// Only items whose groups have already been identified should use this.
+// Which basically means this is only used by the function call normalizer.
+function plainGroupFromIdentifiedItems( identifiedItems ) {
+	return group( 'plain', {
+		items: identifiedItems
+	});
+}
+
 function plainGroup( groupMatchResult ) {
 	return group( 'plain', {
-		items: identifyGroups( groupMatchResult.items )
+		items: normalizeFunctionCalls( identifyGroups( groupMatchResult.items ) )
 	});
 }
 
@@ -223,6 +231,34 @@ function predicateGroup( predicateGroupMatchResult ) {
 		metadatas: predicateGroupMatchResult.metadatas.map( function unwrap( metadataToken ) { return metadataToken.value; }),
 		value: predicateGroupMatchResult.rest.type == 'plain' ? plainGroup( predicateGroupMatchResult.rest ) : null
 	});
+}
+
+function normalizeFunctionCalls( items ) {
+	var itemsReversed = items.slice( 0 );
+	var normalizedItemsReversed = [];
+	itemsReversed.reverse();
+
+	itemsReversed.forEach( function checkItems( item, index ) {
+		var nextItem = normalizedItemsReversed[ checkItems.length - 1 ];
+
+		if( item.type == 'function' ) {
+			if( ! nextItem ) {
+				nextItem = nullGroup();
+			}
+			else if( nextItem.type != 'group' || nextItem.groupType != 'plain' ) {
+				nextItem = plainGroupFromIdentifiedItems([ nextItem ]);
+			}
+
+			normalizedItemsReversed.pop();
+			normalizedItemsReversed.push( plainGroupFromIdentifiedItems([ item, nextItem ]) );
+		}
+		else {
+			normalizedItemsReversed.push( item );
+		}
+	});
+
+	normalizedItemsReversed.reverse();
+	return normalizedItemsReversed;
 }
 
 
