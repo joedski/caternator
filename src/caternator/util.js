@@ -88,3 +88,12 @@ var findIndicesOf = exports.findIndicesOf = function findIndicesOf( array, fn, c
 
 	return foundIndices;
 }
+
+var UIDGen = exports.UIDGen = function UIDGen( prefix ) {
+	this.prefix = String( prefix || '' );
+	this.uid = 0;
+};
+
+UIDGen.prototype.getNext = function() {
+	var nextUID = this.prefix + String( this.uid );
+};

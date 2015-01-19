@@ -41,9 +41,17 @@ function Statement( items, metadatas ) {
 	if( items ) {
 		this.alternationSet = new alternations.AlternationSet( items, metadatas || [] );
 	}
+
+	this.metadatas = new MetadataMap( metadatas );
 }
 
 Statement.prototype.alternationSet = null;
+
+
+
+function MetadataMap( metadatas ) {
+	metadatas.forEach( this.add, this );
+}
 
 
 

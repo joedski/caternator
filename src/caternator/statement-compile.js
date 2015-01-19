@@ -2,12 +2,7 @@ var statements = require( './statements' );
 var util = require( './util' );
 
 function compile( items ) {
-	// try each statement type, using OutputStatement if no other kind matches:
-	// - VariableStatement: (variable{1}, metadata{0,}), assign, (*)
-	// - FunctionStatement: (function{1}, metadata{0,}), assign, (*)
-	// - OutputStatement: *
-
-	var statement;
+	var statement = null;
 	var statementTrials = [
 		tryVariableStatement,
 		tryFunctionStatement,
@@ -27,44 +22,27 @@ function compile( items ) {
 // - an assign token
 // - stuff after an assign token
 function tryVariableStatement( items ) {
-	var subjectItems, valueItems, assignIndex;
+	var statementParts = splitOnFirstAssign( items );
 
-	assignIndex = util.findIndexOf( function assign( item ) {
-		return item.type == 'assign';
-	});
+	if( ! statementParts ) return null;
 
-	if( assignIndex == -1 ) {
-		return null;
-	}
+	var subjectParts = partitionSubject( statementParts.subject, 'variable' );
 
-	subjectItems = items.slice( 0, assignIndex );
-	valueItems = items.slice( assignIndex + 1 );
-
-	if( subjectItems.length < 1 ) {
-		return null;
-	}
-
-	var partitionedItems = util.partitionOnProp( subjectItems, 'type', [ 'variable', 'metadata' ]);
-	var subjectPartedGroups = util.partition( partitionedItems[ '*' ], function forMetadataGroups( item ) {
-		return (item.type == 'group' && item.groupType == 'metadata') ? 'metadata' : '*';
-	});
-
-	if( subjectPartedGroups[ '*' ].length > 0 ) {
-		return null;
-	}
-
-	// Subject side of assign cannot contain more than one actual Subject.
-	if( partitionedItems[ 'variable' ].length > 1 ) {
+	if( subjectParts.variable.length > 1 ) {
 		throw new StatementCompileError( 'Cannot assign to more than one variable in a Variable Statement', {
-			variables: partitionedItems[ 'variable' ],
+			variables: subjectParts[ 'variable' ],
 			items: items
 		});
 	}
 
+	if( subjectParts[ '*' ].length > 0 ) {
+		return null;
+	}
+
 	return new statements.VariableStatement(
-		partitionedItems[ 'variable' ][ 0 ].value,
-		valueItems,
-		partitionedItems[ 'metadata' ].concat( subjectMetadataGroups )
+		subjectParts.variable[ 0 ].value,
+		statementParts.value,
+		subjectParts.metadata
 	);
 }
 
@@ -73,54 +51,61 @@ function tryVariableStatement( items ) {
 // - an assign token
 // - stuff after an assign token
 function tryFunctionStatement( items ) {
-	var subjectItems, valueItems, assignIndex;
+	var statementParts = splitOnFirstAssign( items );
 
-	assignIndex = util.findIndexOf( function assign( item ) {
-		return item.type == 'assign';
-	});
+	if( ! statementParts ) return null;
 
-	if( assignIndex == -1 ) {
-		return null;
-	}
+	var subjectParts = partitionSubject( statementParts.subject, 'function' );
 
-	subjectItems = items.slice( 0, assignIndex );
-	valueItems = items.slice( assignIndex + 1 );
-
-	if( subjectItems.length < 1 ) {
-		return null;
-	}
-
-	// Still need metadata gruops...
-	var partitionedItems = util.partitionOnProp( subjectItems, 'type', [ 'function', 'metadata' ]);
-	var subjectPartedGroups = util.partition( partitionedItems[ '*' ], function forMetadataGroups( item ) {
-		return (item.type == 'group' && item.groupType == 'metadata') ? 'metadata' : '*';
-	});
-
-	if( subjectPartedGroups[ '*' ].length > 0 ) {
-		return null;
-	}
-
-	// Subject side of assign cannot contain more than one actual Subject.
-	if( partitionedItems[ 'function' ].length > 1 ) {
+	if( subjectParts[ 'function' ].length > 1 ) {
 		throw new StatementCompileError( 'Cannot assign to more than one function in a Function Statement', {
-			variables: partitionedItems[ 'function' ],
+			'functions': subjectParts[ 'function' ],
 			items: items
 		});
 	}
 
+	if( subjectParts[ '*' ].length > 0 ) {
+		return null;
+	}
+
 	return new statements.FunctionStatement(
-		partitionedItems[ 'function' ][ 0 ].value,
-		valueItems,
-		partitionedItems[ 'metadata' ].concat( subjectPartedGroups )
+		subjectParts[ 'function' ][ 0 ].value,
+		statementParts.value,
+		subjectParts.metadata
 	);
 }
 
 // Expects an array of items with:
 // - anything
 function tryOutputStatement( items ) {
-	var partitionedItems = util.partition( items, 'type', [ 'metadata' ] );
+	// var partitionedItems = util.partition( items, 'type', [ 'metadata' ] );
 
-	return new statements.OutputStatement( items )
+	return new statements.OutputStatement( items );
+}
+
+
+
+// Splits a list of items into { subject:, value: }
+function splitOnFirstAssign( items ) {
+	var assignIndex = util.findIndexOf( function assign( item ) {
+		return item.type == 'assign';
+	});
+
+	if( assignIndex == -1 ) return null;
+
+	return {
+		subject: items.slice( 0, assignIndex ),
+		value: items.slice( assignIndex + 1 )
+	};
+}
+
+function partitionSubject( subjectItems, otherType ) {
+	return util.partition( subjectItems, function( item ) {
+		if( item.type == otherType ) return otherType;
+		if( item.type == 'metadata' ) return 'metadata';
+		if( item.type == 'group' && item.groupType == 'metadata' ) return 'metadata';
+		return '*';
+	});
 }
 
 
