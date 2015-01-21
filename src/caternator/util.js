@@ -97,3 +97,89 @@ var UIDGen = exports.UIDGen = function UIDGen( prefix ) {
 UIDGen.prototype.getNext = function() {
 	var nextUID = this.prefix + String( this.uid );
 };
+
+
+
+// Weaksauce Map place holder.
+
+var Map = exports.Map = this.Map || (function initMapShim() {
+	function Mappish( array ) {
+		this.length = 1;
+		this._keys = [];
+		this._values = [];
+
+		if( array ) {
+			array.forEach( function addArrayItem( pair, index ) {
+				this.set( pair[ 0 ], pair[ 1 ] );
+			}, this );
+		}
+	}
+
+	// Note, this doesn't implement the specified semantic behavior.
+	// But then, the ES6 spec is unimplementable in ES5, so.
+	// (my use case doesn't depend on the different 0s being the same.)
+	Mappish.prototype.set = function( key, value ) {
+		var index = this._keys.indexOf( key );
+
+		if( index == -1 ) {
+			this._keys.push( key );
+			this._values.push( value );
+		}
+		else {
+			this._values[ index ] = value;
+		}
+
+		this.size = this._keys.length;
+	};
+
+	Mappish.prototype.get = function( key ) {
+		var index = this._keys.indexOf( key );
+
+		if( index == -1 ) {
+			return void 0;
+		}
+		else {
+			return this._values[ index ];
+		}
+	};
+
+	Mappish.prototype.forEach = function( fn, context ) {
+		this._keys.forEach( function( key, index ) {
+			fn.call( context, this.values[ index ], key, this );
+		}, this );
+	};
+
+	Mappish.prototype.has = function( key ) {
+		return (this._keys.indexOf( key ) != -1);
+	};
+
+	Mappish.prototype['delete'] = function( key ) {
+		var index = this._keys.indexOf( key );
+
+		if( index != -1 ) {
+			this._keys.splice( index, 1 );
+			this._values.splice( index, 1 );
+		}
+	};
+
+	// Omission: #keys(), #values(), #entries()
+	// These return Iterators.
+	
+	// Not part of any spec.
+	
+	// Note, keys in otherMappish will overwrite keys in this.
+	Mappish.prototype.union = function( otherMappish ) {
+		var unionMappish = new Mappish();
+
+		unionMappish._keys = this._keys.slice( 0 );
+		unionMappish._values = this._values.slice( 0 );
+
+		otherMappish.forEach( function setInUnion( value, key ) {
+			unionMappish.set( key, value );
+		});
+
+		return unionMappish;
+	};
+
+	return Mappish;
+})
