@@ -89,6 +89,27 @@ var findIndicesOf = exports.findIndicesOf = function findIndicesOf( array, fn, c
 	return foundIndices;
 }
 
+// Iterates over enumerable properties.
+var forEachProperty = exports.forEachProperty = function forEachProperty( object, fn, context ) {
+	var pn;
+
+	for( pn in object ) {
+		fn.call( context, object[ pn ], pn, object );
+	}
+}
+
+// Iterates over own enumerable properties.
+var forEachOwnProperty = exports.forEachOwnProperty = function forEachOwnProperty( object, fn, context ) {
+	function fnIfOwn( value, propName, object ) {
+		if( object.hasOwnProperty( propName ) )
+			fn.call( context, value, propName, object );
+	}
+
+	forEachProperty( object, fnIfOwn, context );
+}
+
+
+
 var UIDGen = exports.UIDGen = function UIDGen( prefix ) {
 	this.prefix = String( prefix || '' );
 	this.uid = 0;
@@ -96,6 +117,47 @@ var UIDGen = exports.UIDGen = function UIDGen( prefix ) {
 
 UIDGen.prototype.getNext = function() {
 	var nextUID = this.prefix + String( this.uid );
+};
+
+
+
+var Tally = exports.Tally = function Tally() {
+	this.map = new Map();
+}
+
+Tally.prototype.incr = function( name, count ) {
+	if( count == void 0 ) count = 1;
+
+	if( ! this.has( name ) ) {
+		this.set( name, count );
+	}
+	else {
+		this.set( name, this.get( name ) + count );
+	}
+};
+
+Tally.prototype.decr = function( name, count ) {
+	if( count == void 0 ) count = 1;
+	
+	this.incr( name, - count );
+};
+
+Tally.prototype.has = function( name ) {
+	return this.map.has( name );
+};
+
+Tally.prototype.get = function( name ) {
+	return this.map.get( name );
+};
+
+Tally.prototype.set = function( name, count ) {
+	return this.map.set( name, count );
+};
+
+Tally.prototype.forEach = function( fn, context ) {
+	this.map.forEach( function( value, key ) {
+		fn.call( context, value, key, this );
+	}, this );
 };
 
 

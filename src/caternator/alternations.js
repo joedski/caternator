@@ -3,41 +3,47 @@
 
 var util = require( './util' );
 var Map = this.Map || util.Map;
+var environment = require( './environment' );
 
 
 
-////////////////////////
-// Environment Classes
-////////////////////////
+// This assumes all items being sorted are satisfied.
+function byPreferenceOnEnvironment( environment ) {
+	return function( altItemA, altItemB ) {
+		var resultA = altItemA.getSatisfactionWith( environment );
+		var resultB = altItemB.getSatisfactionWith( environment );
 
-function Environment( options ) {
-	options = options || {};
+		if( resultA.requiredVariables.satisfied.length != resultB.requiredVariables.satisfied.length ) {
+			return resultA.requiredVariables.satisfied.length - resultB.requiredVariables.satisfied.length;
+		}
+		else if( resultA.requiredFunctions.satisfied.length != resultB.requiredFunctions.satisfied.length ) {
+			return resultA.requiredFunctions.satisfied.length - resultB.requiredFunctions.satisfied.length;
+		}
+		else if( resultA.optionalVariables.satisfied.length != resultB.optionalVariables.satisfied.length ) {
+			return resultA.optionalVariables.satisfied.length - resultB.optionalVariables.satisfied.length;
+		}
+		else if( resultA.optionalFunctions.satisfied.length != resultB.optionalFunctions.satisfied.length ) {
+			return resultA.optionalFunctions.satisfied.length - resultB.optionalFunctions.satisfied.length;
+		}
+		else if( resultA.optionalVariables.unsatisfied.length != resultB.optionalVariables.unsatisfied.length ) {
+			return -(resultA.optionalVariables.unsatisfied.length - resultB.optionalVariables.unsatisfied.length);
+		}
+		else if( resultA.optionalFunctions.unsatisfied.length != resultB.optionalFunctions.unsatisfied.length ) {
+			return -(resultA.optionalFunctions.unsatisfied.length - resultB.optionalFunctions.unsatisfied.length);
+		}
+		else {
+			if( altItemA.isEmpty() && ! altItemB.isEmpty() ) {
+				return -1;
+			}
+			else if( ! altItemA.isEmpty() && altItemB.isEmpty() ) {
+				return 1;
+			}
+		}
 
-	this.variableMap = options.variableMap || new Map();
-	this.functionMap = options.functionMap || new Map();
-	this.outputs = options.outputs || [];
+		// Any items which are the same in all of the above have the same preference.
+		return 0;
+	};
 }
-
-Environment.prototype.getVariable = function( variableName ) {
-	return this.variableMap.get( variableName );
-};
-
-Environment.prototype.getFunction = function( functionName ) {
-	return this.functionMap.get( functionName );
-};
-
-function EnvironmentMemo( environment ) {
-	this.environment = environment;
-	this.store = new Map();
-}
-
-EnvironmentMemo.prototype.get = function( selectable ) {
-	this.store.get( selectable );
-};
-
-EnvironmentMemo.prototype.set = function( selectable ) {
-	this.store.set( selectable );
-};
 
 
 
@@ -49,22 +55,63 @@ EnvironmentMemo.prototype.set = function( selectable ) {
 function AlternationSet( alternationItemList, metadata ) {
 	this.items = alternationItemList;
 	this.metadata = metadata;
-
-	this.satisfactionCriteria = this.getSatisfactionCriteria();
 }
 
 AlternationSet.prototype.items = null;
 AlternationSet.prototype.metadata = null;
 
 AlternationSet.prototype.getSatisfactionCriteria = function() {
-	// requiredVariables - variables which are required on every alternation item.
-	// requiredFunctions - functions which are required on every alternation item.
-	// optionalVariables - variables which are optional on any alternation item, or required on some but not all.
-	// optionalFunctions - functions which are optional on any alternation item, or required on some but not all.
+	var tallies = {
+		variables: {
+			required: new util.Tally(),
+			optional: new util.Tally()
+		},
+		functions: {
+			required: new util.Tally(),
+			optional: new util.Tally()
+		}
+	};
+
+	var criteria = new satisfaction.SatisfactionCriteria();
+
+	this.items.forEach( function tallyVariablesOf( item ) {
+		var criteria = item.getSatisfactionCriteria();
+
+		util.forEachOwnProperty( tallies, function forKind( pair, kind ) {
+			util.forEachOwnProperty( pair, function forRequirement( tally, requirement ) {
+				criteria[ kind ][ tally ].forEach( tallyNamedItem( name ) {
+					tally.incr( name );
+				});
+			});
+		});
+	});
+
+	util.forEachOwnProperty( tallies, function tallyKind( pair, kind ) {
+		pair.required.forEach( function tallyRequired( count, name ) {
+			if( count == this.items.count ) {
+				criteria[ kind ].required.push( name );
+			}
+			else {
+				criteria[ kind ].optional.push( name );
+			}
+		}, this );
+
+		pair.optional.forEach( function tallyOptional( count, name ) {
+			criteria[ kind ].optional.push( name );
+		});
+	}, this );
+
+	return criteria;
+};
+
+AlternationSet.prototype.getSatisfactionWith = function( environment ) {
+	this.getSatisfactionCriteria().satisfiedBy( environment );
 };
 
 // -> SelectionResult
 AlternationSet.prototype.select = function( environment, environmentMemo ) {
+	// if a memo is present, then check that first.
+	//   If a Result for This is present in the Memo, return that Result.
 	// cull any Alternation Items not Satisfied by current Environment.
 	// try conditional Alternation Items first:
 	//   cull any Alternation Items whose Conditions fail (are not Fulfilled)
@@ -86,6 +133,16 @@ AlternationSet.prototype.select = function( environment, environmentMemo ) {
 	// Choose one Item from those remaining and return Item's Selection Results within a new Selection Result.
 };
 
+AlternationSet.prototype.selectAll = function( environment, environmentMemo ) {
+	return this.items.map( function selectAlternationItems( item ) {
+		return new SelectionResult({
+			environment: environment,
+			environmentMemo: environmentMemo,
+			itemResults: item.selectContents( environment, environmentMemo )
+		});
+	});
+};
+
 
 
 // contents :Array, condition :Condition..., metadata :Map
@@ -94,8 +151,6 @@ function AlternationItem( contents, condition, metadata ) {
 	this.metadata = metadata;
 	this.conditional = !! condition;
 	this.condition = condition || new AlternationItemNonCondition();
-
-	this.satisfactionCriteria = this.getSatisfactionCriteria();
 }
 
 AlternationSet.prototype.items = null;
@@ -108,6 +163,10 @@ AlternationSet.prototype.getSatisfactionCriteria = function() {
 	//   or which are required on any sub-items within this item's contents.
 	// optionalVariables - variables which are optional on any sub-alternation-set within this item's contents.
 	// optionalFunctions - functions which are optional on any sub-alternation-set within this item's contents.
+};
+
+AlternationSet.prototype.getSatisfactionWith = function( environment ) {
+	this.getSatisfactionCriteria().satisfiedBy( environment );
 };
 
 // -> Array<SelectionResult|TerminalResult>
@@ -125,6 +184,11 @@ function AlternationTerminal( value ) {
 
 // -> TerminalResult
 AlternationTerminal.prototype.select = function( environment, environmentMemo ) {
+	return new TerminalResult({
+		environment: environment,
+		environmentMemo: environmentMemo,
+		value: this.value;
+	});
 };
 
 
@@ -151,8 +215,61 @@ function AlternationFunction( name, fnArgs ) {
 // Result Classes
 ////////////////////////
 
-// TODO: SelectionResult class
-// TODO: TerminalResult cass
+function Result( options ) {
+	if( ! options ) return;
+
+	this.environment = options.environment;
+	this.environmentMemo = options.environmentMemo;
+}
+
+Result.prototype.toString = function() {
+	return '';
+};
+
+
+
+////////////////////////
+
+function SelectionResult( options ) {
+	Result.call( this, options );
+
+	this.itemResults = options.itemResults;
+}
+
+SelectionResult.prototype = new Result();
+
+SelectionResult.prototype.toString = function() {
+	return this.itemResults.map( function toStringItemResults( itemResult ) {
+		return itemResult.toString();
+	}).join( '' );
+};
+
+
+
+////////////////////////
+
+function TerminalResult( options ) {
+	Result.call( this, options );
+
+	this.value = options.value;
+}
+
+TerminalResult.prototype = new Result();
+
+TerminalResult.prototype.toString = function() {
+	return String( this.value );
+};
+
+
+
+////////////////////////
+
+function NullResult( options ) {
+	Result.call( this, options );
+}
+
+NullResult.prototype = new Result();
+
 
 
 

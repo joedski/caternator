@@ -1,113 +1,58 @@
+////////////////////////
+// Environment Classes
+////////////////////////
+
 /**
- * Usage:
- * var env = new Environment({
- *     variableStatements: [ ... ],
- *     functionStatements: [ ... ],
- *     outputStatements: [ ... ]
- * });
+ * Usage of Environment and Environment Memo:
  *
- * var root = new RootAlternation( env );
- * var output = root.selectOne();
+ * var caternatorProgram = Caternator.parseAndCompile( stringInput );
  *
- * ...
- *
- * RootAlternation.prototype.selectOne = function( env ) {
- *     var memoizedEnv = env.getMemoized();
- *     return this.root.selectOne( memoizedEnv );
- * }
+ * var result1 = caternatorProgram.select();
+ * var result2 = caternatorProgram.select({ environmentMemo: result1.environmentMemo });
+ * var allResults = caternatorProgram.selectAll({ environmentMemo: result2.environmentMemo });
  */
+
+// var env = new Environment({
+//     variableMap: Map<Variable Name : Alternation Set>
+//     functionMap: Map<Variable Name : Alternation Set>
+//     outputs: Array<Alternation Set>
+// })
 
 function Environment( options ) {
 	options = options || {};
 
-	initStores.call( this );
-
-	(options.variableStatements || []).forEach( this.addVariable, this );
-	(options.functionStatements || []).forEach( this.addFunction, this );
-	(options.outputStatements || []).forEach( this.addOutput, this );
+	this.variableMap = options.variableMap || new Map();
+	this.functionMap = options.functionMap || new Map();
+	this.outputs = options.outputs || [];
 }
 
-function initStores() {
-	this.variableStore = new Store();
-	this.functionStore = new Store();
-	this.outputs = [];
-}
-
-Environment.prototype.addVariable = function( variableStatement ) {
-	this.variableStore.set( variableStatement.subject, variableStatement.value );
+Environment.prototype.getVariable = function( variableName ) {
+	return this.variableMap.get( variableName );
 };
 
-Environment.prototype.addFunction = function( functionStatement ) {
-	this.functionStore.set( functionStatement.subject, functionStatement.value );
+Environment.prototype.getFunction = function( functionName ) {
+	return this.functionMap.get( functionName );
 };
 
-Environment.prototype.addOutput = function( outputStatement ) {
-	this.outputs.push( outputStatement.value );
+Environment.prototype.hasVariable = function( variableName ) {
+	return this.variableMap.has( variableName );
 };
 
-Environment.prototype.getMemoized = function() {
-	return new MemoizedEnvironment( this );
+Environment.prototype.hasFunction = function( functionName ) {
+	return this.functionMap.has( functionName );
 };
-
-Environment.prototype.getVariable = function( name ) {
-	return this.variableStore.get( name );
-};
-
-Environment.prototype.getFunction = function( name ) {
-	return this.functionStore.get( name );;
-};
-
-Environment.prototype.getAllOutputs = function() {
-	return this.outputs.slice( 0 );
-};
-
-
-
-function Store() {
-	this._store = {};
-}
-
-Store.prototype.get = function( name ) {
-	return this._store[ name ];
-};
-
-Store.prototype.set = function( name, value ) {
-	this._store[ name ] = value;
-	return value;
-};
-
-
-
-function MemoizedEnvironment( baseEnvironment ) {
-	this.memo = new EnvironmentMemo();
-	this.base = baseEnvironment;
-}
-
-// This allows reuse of the same environment for multiple selections if so desired.
-MemoizedEnvironment.prototype.getMemoized = function() {
-	return this;
-};
-
-MemoizedEnvironment.prototype.getVariable = function( name ) {
-	var alternation = this.base.getVariable( name );
-	var memo = this.memo.get( alternation );
-
-	if( memo ) return memo;
-
-	return this.memo.set( alternation, alternation.selectOne( this.base ) );
-};
-
-
 
 function EnvironmentMemo() {
-	this.memo = {};
+	this.store = new Map();
 }
 
-EnvironmentMemo.prototype.get = function( alternation ) {
-	return this.memo[ alternation.uid ];
+EnvironmentMemo.prototype.get = function( selectable ) {
+	this.store.get( selectable );
 };
 
-EnvironmentMemo.prototype.set = function( alternation, result ) {
-	this.memo[ alternation.uid ] = result;
-	return result;
+EnvironmentMemo.prototype.set = function( selectable ) {
+	this.store.set( selectable );
 };
+
+exports.Environment = Environment;
+exports.EnvironmentMemo = EnvironmentMemo;
