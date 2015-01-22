@@ -31,15 +31,12 @@ function EnvironmentMemo( environment ) {
 	this.store = new Map();
 }
 
-EnvironmentMemo.prototype.getResultOf = function( selectable ) {
-	var result = this.store.get( selectable );
+EnvironmentMemo.prototype.get = function( selectable ) {
+	this.store.get( selectable );
+};
 
-	if( ! result ) {
-		result = selectable.select( this.environment );
-		this.store.set( result );
-	}
-
-	return result;
+EnvironmentMemo.prototype.set = function( selectable ) {
+	this.store.set( selectable );
 };
 
 
@@ -60,12 +57,33 @@ AlternationSet.prototype.items = null;
 AlternationSet.prototype.metadata = null;
 
 AlternationSet.prototype.getSatisfactionCriteria = function() {
-	// 
+	// requiredVariables - variables which are required on every alternation item.
+	// requiredFunctions - functions which are required on every alternation item.
+	// optionalVariables - variables which are optional on any alternation item, or required on some but not all.
+	// optionalFunctions - functions which are optional on any alternation item, or required on some but not all.
 };
 
 // -> SelectionResult
-AlternationSet.prototype.select = function( environment ) {
-	// body...
+AlternationSet.prototype.select = function( environment, environmentMemo ) {
+	// cull any Alternation Items not Satisfied by current Environment.
+	// try conditional Alternation Items first:
+	//   cull any Alternation Items whose Conditions fail (are not Fulfilled)
+	//   if no Items remain, skip to non-Conditional Alternation Items.
+	//   otherwise skip to Preferential Selection.
+	// failing above, do non-Conditional Alternation Items:
+	// failing that, Select upon an empty list.
+	// 
+	// Preferential Selection:
+	// Rank Items in order of Preference:
+	//   items with more Required Variables Satisfied rank higher.
+	//   where the above is the same, items with more Optional Variables Satisfied rank higher.
+	//   where all of the above are the same, items with fewer Optional Variables Not Satisfied rank higher.
+	//   where all of the above are the same, items which are Not Empty rank higher than those that are.
+	// 
+	// Keep only Items with the greatest Preference.
+	//   If more than one Item has the same Greatest Preference, keep all of them.
+	// 
+	// Choose one Item from those remaining and return Item's Selection Results within a new Selection Result.
 };
 
 
@@ -84,12 +102,19 @@ AlternationSet.prototype.items = null;
 AlternationSet.prototype.metadata = null;
 
 AlternationSet.prototype.getSatisfactionCriteria = function() {
-	// 
+	// requiredVariables - variables which appear directly within this item's contents,
+	//   or which are required on any sub-items within this item's contents.
+	// requiredFunctions - functions which appear directly within this item's contents,
+	//   or which are required on any sub-items within this item's contents.
+	// optionalVariables - variables which are optional on any sub-alternation-set within this item's contents.
+	// optionalFunctions - functions which are optional on any sub-alternation-set within this item's contents.
 };
 
 // -> Array<SelectionResult|TerminalResult>
-AlternationSet.prototype.selectContents = function( environment ) {
-	// body...
+AlternationSet.prototype.selectContents = function( environment, environmentMemo ) {
+	return this.contents.map( function selectOn( item ) {
+		return item.select( environment, environmentMemo );
+	});
 };
 
 
@@ -99,8 +124,7 @@ function AlternationTerminal( value ) {
 };
 
 // -> TerminalResult
-AlternationTerminal.prototype.select = function( environment ) {
-	// just this value warpped in a result.
+AlternationTerminal.prototype.select = function( environment, environmentMemo ) {
 };
 
 
