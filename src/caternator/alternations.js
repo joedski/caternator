@@ -4,46 +4,7 @@
 var util = require( './util' );
 var Map = this.Map || util.Map;
 var environment = require( './environment' );
-
-
-
-// This assumes all items being sorted are satisfied.
-function byPreferenceOnEnvironment( environment ) {
-	return function( altItemA, altItemB ) {
-		var resultA = altItemA.getSatisfactionWith( environment );
-		var resultB = altItemB.getSatisfactionWith( environment );
-
-		if( resultA.requiredVariables.satisfied.length != resultB.requiredVariables.satisfied.length ) {
-			return resultA.requiredVariables.satisfied.length - resultB.requiredVariables.satisfied.length;
-		}
-		else if( resultA.requiredFunctions.satisfied.length != resultB.requiredFunctions.satisfied.length ) {
-			return resultA.requiredFunctions.satisfied.length - resultB.requiredFunctions.satisfied.length;
-		}
-		else if( resultA.optionalVariables.satisfied.length != resultB.optionalVariables.satisfied.length ) {
-			return resultA.optionalVariables.satisfied.length - resultB.optionalVariables.satisfied.length;
-		}
-		else if( resultA.optionalFunctions.satisfied.length != resultB.optionalFunctions.satisfied.length ) {
-			return resultA.optionalFunctions.satisfied.length - resultB.optionalFunctions.satisfied.length;
-		}
-		else if( resultA.optionalVariables.unsatisfied.length != resultB.optionalVariables.unsatisfied.length ) {
-			return -(resultA.optionalVariables.unsatisfied.length - resultB.optionalVariables.unsatisfied.length);
-		}
-		else if( resultA.optionalFunctions.unsatisfied.length != resultB.optionalFunctions.unsatisfied.length ) {
-			return -(resultA.optionalFunctions.unsatisfied.length - resultB.optionalFunctions.unsatisfied.length);
-		}
-		else {
-			if( altItemA.isEmpty() && ! altItemB.isEmpty() ) {
-				return -1;
-			}
-			else if( ! altItemA.isEmpty() && altItemB.isEmpty() ) {
-				return 1;
-			}
-		}
-
-		// Any items which are the same in all of the above have the same preference.
-		return 0;
-	};
-}
+var satisfaction = require( './satisfaction' );
 
 
 
@@ -60,10 +21,12 @@ function AlternationSet( alternationItemList, metadata ) {
 AlternationSet.prototype.items = null;
 AlternationSet.prototype.metadata = null;
 
-AlternationSet.prototype.getSatisfactionCriteria = function() {
+AlternationSet.prototype.getSatisfactionCriteria = function( environment ) {
 	var tallies = {
 		variables: {
+			// variables that are required on all Alternation Items in this Set are required on this Set.
 			required: new util.Tally(),
+			// variables that are optinal or required on any but not all Alternation Items in this set are optional on this Set.
 			optional: new util.Tally()
 		},
 		functions: {
@@ -75,7 +38,7 @@ AlternationSet.prototype.getSatisfactionCriteria = function() {
 	var criteria = new satisfaction.SatisfactionCriteria();
 
 	this.items.forEach( function tallyVariablesOf( item ) {
-		var criteria = item.getSatisfactionCriteria();
+		var criteria = item.getSatisfactionCriteria( environment );
 
 		util.forEachOwnProperty( tallies, function forKind( pair, kind ) {
 			util.forEachOwnProperty( pair, function forRequirement( tally, requirement ) {
@@ -105,34 +68,59 @@ AlternationSet.prototype.getSatisfactionCriteria = function() {
 };
 
 AlternationSet.prototype.getSatisfactionWith = function( environment ) {
-	this.getSatisfactionCriteria().satisfiedBy( environment );
+	return this.getSatisfactionCriteria( environment ).satisfiedBy( environment );
 };
 
 // -> SelectionResult
 AlternationSet.prototype.select = function( environment, environmentMemo ) {
-	// if a memo is present, then check that first.
-	//   If a Result for This is present in the Memo, return that Result.
-	// cull any Alternation Items not Satisfied by current Environment.
-	// try conditional Alternation Items first:
-	//   cull any Alternation Items whose Conditions fail (are not Fulfilled)
-	//   if no Items remain, skip to non-Conditional Alternation Items.
-	//   otherwise skip to Preferential Selection.
-	// failing above, do non-Conditional Alternation Items:
-	// failing that, Select upon an empty list.
-	// 
-	// Preferential Selection:
-	// Rank Items in order of Preference:
-	//   items with more Required Variables Satisfied rank higher.
-	//   where the above is the same, items with more Optional Variables Satisfied rank higher.
-	//   where all of the above are the same, items with fewer Optional Variables Not Satisfied rank higher.
-	//   where all of the above are the same, items which are Not Empty rank higher than those that are.
-	// 
-	// Keep only Items with the greatest Preference.
-	//   If more than one Item has the same Greatest Preference, keep all of them.
-	// 
-	// Choose one Item from those remaining and return Item's Selection Results within a new Selection Result.
+	if( environmentMemo && environmentMemo.get( this ) ) {
+		return environmentMemo.get( this );
+	}
+
+	var byPreference = satisfaction.byPreferenceOnEnvironment( environment );
+	var preferentiallySortedItems;
+	var unculledItems = this.items.filter( function onlySatisfiedItems( item ) {
+		return item.getSatisfactionWith( environment ).satisfied;
+	});
+	var unsortedItems;
+	var mostPreferredItems;
+	var selectedItem;
+	var result;
+
+	// Try conditional items first.
+	unsortedItems = unculledItems.filter( function getConditionalItems( item ) {
+		return item.conditional && item.condition.fulfilledBy( environment );
+	});
+
+	if( unsortedItems.length ===  ) {
+		// Otherwise, non-conditional.
+		unsortedItems = this.items.filter( function getConditionalItems( item ) {
+			return ! item.conditional;
+		});
+	}
+
+	unsortedItems.sort( byPreference );
+	mostPreferredItems = unsortedItems.filter( function onlyMostPreferred( item ) {
+		return byPreference( item, unsortedItems[ 0 ] ) === 0;
+	});
+
+	// Pick only one item.
+	selectedItem = mostPreferredItems[ Math.random() * mostPreferredItems.length << 0 ];
+
+	result = new SelectionResult({
+		environment: environment,
+		environmentMemo: environmentMemo,
+		itemResults: selectedItem.selectContents( environment, environmentMemo )
+	});
+
+	if( environmentMemo ) {
+		environmentMemo.set( this, result );
+	}
+
+	return result;
 };
 
+// This is mostly used as part of implementing Conditions.
 AlternationSet.prototype.selectAll = function( environment, environmentMemo ) {
 	return this.items.map( function selectAlternationItems( item ) {
 		return new SelectionResult({
@@ -145,7 +133,14 @@ AlternationSet.prototype.selectAll = function( environment, environmentMemo ) {
 
 
 
+////////////////////////
+
 // contents :Array, condition :Condition..., metadata :Map
+// contents Array can contain any number of any of:
+// - Alternation Set
+// - Alternation Variable
+// - Alternation Function
+// - Alternation Terminal
 function AlternationItem( contents, condition, metadata ) {
 	this.contents = contents;
 	this.metadata = metadata;
@@ -153,30 +148,67 @@ function AlternationItem( contents, condition, metadata ) {
 	this.condition = condition || new AlternationItemNonCondition();
 }
 
-AlternationSet.prototype.items = null;
-AlternationSet.prototype.metadata = null;
+AlternationItem.prototype.items = null;
+AlternationItem.prototype.metadata = null;
 
-AlternationSet.prototype.getSatisfactionCriteria = function() {
+AlternationItem.prototype.getSatisfactionCriteria = function( environment ) {
 	// requiredVariables - variables which appear directly within this item's contents,
 	//   or which are required on any sub-items within this item's contents.
 	// requiredFunctions - functions which appear directly within this item's contents,
 	//   or which are required on any sub-items within this item's contents.
 	// optionalVariables - variables which are optional on any sub-alternation-set within this item's contents.
 	// optionalFunctions - functions which are optional on any sub-alternation-set within this item's contents.
+
+	var criteria = new satisfaction.SatisfactionCriteria();
+	var tallies = {
+		variables: {
+			required: new util.Tally(),
+			optional: new util.Tally()
+		},
+		functions: {
+			required: new util.Tally(),
+			optional: new util.Tally()
+		}
+	};
+
+	this.items.forEach( function tallyItems( item ) {
+		if( item instanceof AlternationSet ) {
+			item.getSatisfactionCriteria( environment ).forEach( function tallyItems( name, type, requirement ) {
+				tallies[ type ][ requirement ].incr( name );
+			});
+		}
+		else if( item.type == 'variable' || item.type == 'function' ) {
+			tallies[ item.type + 's' ].required.incr( item.value );
+		}
+		// otherwise do nothing.
+		return;
+	});
+
+	util.forEachOwnProperty( tallies, function addTalliesOfTypeToCriteria( type, typeName ) {
+		util.forEachOwnProperty( type, function addTalliesOfRequirementToCriteria( tally, requirement ) {
+			tally.forEach( function addTally( count, name ) {
+				criteria[ typeName ][ requirement ].push( name );
+			});
+		});
+	});
+
+	return criteria;
 };
 
-AlternationSet.prototype.getSatisfactionWith = function( environment ) {
-	this.getSatisfactionCriteria().satisfiedBy( environment );
+AlternationItem.prototype.getSatisfactionWith = function( environment ) {
+	return this.getSatisfactionCriteria( environment ).satisfiedBy( environment );
 };
 
 // -> Array<SelectionResult|TerminalResult>
-AlternationSet.prototype.selectContents = function( environment, environmentMemo ) {
+AlternationItem.prototype.selectContents = function( environment, environmentMemo ) {
 	return this.contents.map( function selectOn( item ) {
 		return item.select( environment, environmentMemo );
 	});
 };
 
 
+
+////////////////////////
 
 function AlternationTerminal( value ) {
 	this.value = value;
@@ -191,15 +223,46 @@ AlternationTerminal.prototype.select = function( environment, environmentMemo ) 
 	});
 };
 
+AlternationTerminal.prototype.getSatisfactionCriteria = function( environment ) {
+	return satisfaction.SatisfactionCriteria.nullCriteria;
+};
 
+AlternationTerminal.prototype.getSatisfactionWith = function( environment ) {
+	return this.getSatisfactionCriteria( environment ).satisfiedBy( environment );
+};
+
+
+
+////////////////////////
 
 function AlternationVariable( name ) {
 	this.name = name;
 }
 
-// TODO: AlternationVariable prototype...
+AlternationVariable.prototype.select = function( environment, environmentMemo ) {
+	return environment.getVariable( this.name ).select( environment, environmentMemo );
+};
+
+AlternationVariable.prototype.getSatisfactionCriteria = function( environment ) {
+	// Technically should be the criteria of itself and the contained Alternation Set,
+	// but if we don't have an environment then this can only return its own name as the only Criteria.
+
+	var criteria = new satisfaction.SatisfactionCriteria({ variables: { required: [ this.name ] } });
+
+	if( environment ) {
+		criteria = criteria.union( environment.getVariable( this.name ).getSatisfactionCriteria( environment ) );
+	}
+
+	return criteria;
+};
+
+AlternationVariable.prototype.getSatisfactionWith = function( environment ) {
+	return this.getSatisfactionCriteria( environment ).satisfiedBy( environment );
+};
 
 
+
+////////////////////////
 
 // name :String, fnArgs :AlternationSet
 function AlternationFunction( name, fnArgs ) {
@@ -207,7 +270,52 @@ function AlternationFunction( name, fnArgs ) {
 	this.arguments = fnArgs;
 }
 
-// TODO: AlternationFunction prototype...
+AlternationFunction.prototype.select = function( environment, environmentMemo ) {
+	var result;
+
+	environmentMemo.pushFunctionArguments( this.arguments.select( environment, environmentMemo ) );
+	result = environment.getFunction( this.name ).select( environment, environmentMemo );
+	environmentMemo.popFunctionArgumetns();
+
+	return result;
+};
+
+AlternationFunction.prototype.getSatisfactionCriteria = function( environment ) {
+	// Technically should be the criteria of itself and the contained Alternation Set,
+	// but if we don't have an environment then this can only return its own name as the only Criteria.
+
+	var criteria = new satisfaction.SatisfactionCriteria({ functions: { required: [ this.name ] } });
+
+	criteria = criteria.union( this.arguments.getSatisfactionCriteria( environment ) );
+
+	if( environment ) {
+		criteria = criteria.union( environment.getVariable( this.name ).getSatisfactionCriteria( environment ) );
+	}
+
+	return criteria;
+};
+
+AlternationFunction.prototype.getSatisfactionWith = function( environment ) {
+	return this.getSatisfactionCriteria( environment ).satisfiedBy( environment );
+};
+
+
+
+////////////////////////
+
+function AlternationFunctionArguments() {}
+
+AlternationFunctionArguments.prototype.select = function( environment, environmentMemo ) {
+	return environmentMemo.getFunctionArguments();
+};
+
+AlternationFunctionArguments.prototype.getSatisfactionCriteria = function( environment ) {
+	return new satisfaction.SatisfactionCriteria();
+};
+
+AlternationFunctionArguments.prototype.getSatisfactionWith = function( environment ) {
+	return this.getSatisfactionCriteria( environment ).satisfiedBy( environment );
+};
 
 
 

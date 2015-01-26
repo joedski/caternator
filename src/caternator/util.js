@@ -155,8 +155,8 @@ Tally.prototype.set = function( name, count ) {
 };
 
 Tally.prototype.forEach = function( fn, context ) {
-	this.map.forEach( function( value, key ) {
-		fn.call( context, value, key, this );
+	this.map.forEach( function( count, key ) {
+		fn.call( context, count, key, this );
 	}, this );
 };
 

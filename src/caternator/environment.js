@@ -42,8 +42,11 @@ Environment.prototype.hasFunction = function( functionName ) {
 	return this.functionMap.has( functionName );
 };
 
+
+
 function EnvironmentMemo() {
 	this.store = new Map();
+	this.functionArguments = [];
 }
 
 EnvironmentMemo.prototype.get = function( selectable ) {
@@ -52,6 +55,19 @@ EnvironmentMemo.prototype.get = function( selectable ) {
 
 EnvironmentMemo.prototype.set = function( selectable ) {
 	this.store.set( selectable );
+};
+
+EnvironmentMemo.prototype.pushFunctionArguments = function( result ) {
+	this.functionArguments.push( result );
+};
+
+EnvironmentMemo.prototype.popFunctionArguments = function() {
+	this.functionArguments.pop();
+};
+
+// Returns undefined if there are currently no function arguments.
+EnvironmentMemo.prototype.getFunctionArguments = function() {
+	return this.functionArguments[ this.functionArguments.length - 1 ];
 };
 
 exports.Environment = Environment;
