@@ -85,14 +85,14 @@ AlternationSet.prototype.select = function( environment, environmentMemo ) {
 	var unsortedItems;
 	var mostPreferredItems;
 	var selectedItem;
-	var result;
+	var result, itemResults;
 
 	// Try conditional items first.
 	unsortedItems = unculledItems.filter( function getConditionalItems( item ) {
 		return item.conditional && item.condition.fulfilledBy( environment );
 	});
 
-	if( unsortedItems.length ===  ) {
+	if( unsortedItems.length === 0 ) {
 		// Otherwise, non-conditional.
 		unsortedItems = this.items.filter( function getConditionalItems( item ) {
 			return ! item.conditional;
@@ -107,10 +107,12 @@ AlternationSet.prototype.select = function( environment, environmentMemo ) {
 	// Pick only one item.
 	selectedItem = mostPreferredItems[ Math.random() * mostPreferredItems.length << 0 ];
 
+	itemResults = selectedItem.selectContents( environment, environmentMemo );
 	result = new SelectionResult({
 		environment: environment,
 		environmentMemo: environmentMemo,
-		itemResults: selectedItem.selectContents( environment, environmentMemo )
+		itemResults: itemResults,
+		metadata: this.metadata.union( selectedItem.metadata )
 	});
 
 	if( environmentMemo ) {
@@ -126,9 +128,10 @@ AlternationSet.prototype.selectAll = function( environment, environmentMemo ) {
 		return new SelectionResult({
 			environment: environment,
 			environmentMemo: environmentMemo,
-			itemResults: item.selectContents( environment, environmentMemo )
+			itemResults: item.selectContents( environment, environmentMemo ),
+			metadata: this.metadata.union( item.metadata )
 		});
-	});
+	}, this );
 };
 
 
@@ -150,6 +153,12 @@ function AlternationItem( contents, condition, metadata ) {
 
 AlternationItem.prototype.items = null;
 AlternationItem.prototype.metadata = null;
+
+AlternationItem.prototype.isEmpty = function() {
+	return this.contents.filter( function isNotWhiteSpace( item ) {
+		return ! (item.type == 'whitespace' && item.type == 'linebreak');
+	}).length === 0;
+};
 
 AlternationItem.prototype.getSatisfactionCriteria = function( environment ) {
 	// requiredVariables - variables which appear directly within this item's contents,
@@ -328,6 +337,7 @@ function Result( options ) {
 
 	this.environment = options.environment;
 	this.environmentMemo = options.environmentMemo;
+	this.metadata = options.metadata || new util.Map();
 }
 
 Result.prototype.toString = function() {
@@ -338,6 +348,7 @@ Result.prototype.toString = function() {
 
 ////////////////////////
 
+// TODO: Metadata?
 function SelectionResult( options ) {
 	Result.call( this, options );
 
@@ -387,38 +398,65 @@ NullResult.prototype = new Result();
 
 function AlternationItemNonCondition() {}
 
-AlternationItemNonCondition.prototype.fulfilledBy = function( environment ) {
+AlternationItemNonCondition.prototype.fulfilledBy = function( environment, environmentMemo ) {
 	return true;
 };
 
-function AlternationItemIsCondition( subjectName, metadata ) {
+// TODO: AlternationItemNonCondition: #getSatisfactionCriteria, #getSatisfactionWith
+
+
+
+function AlternationItemIsCondition( subjectName, alternationSet ) {
 	this.subjectName = subjectName;
-	this.metadata = metadata;
+	this.value = alternationSet;
 }
 
-AlternationItemIsCondition.prototype.fulfilledBy = function( environment ) {
+AlternationItemIsCondition.prototype.fulfilledBy = function( environment, environmentMemo ) {
 	// true if the variable is defined
 	// and if it has the metadata in this.metadata also defined.
+	// memo is required to get proper value of subject.
+	// then the value (result of, anyway) is checked against every result of this.value (this.value.selectAll.some(...))
+
+	if( ! environment.hasVariable( this.subjectName ) ) {
+		return false;
+	}
+
+	var subjectSelection = environment.getVariable( this.subjectName ).select( environment, environmentMemo );
+	var valueSelections = this.value.selectAll( environment, environmentMemo );
+
+	return valueSelections.some( function valueItemResult( itemResult ) {
+		// test metadata,
+		// test string value...?
+		return false;
+	})
 };
+
+// TODO: AlternationItemIsCondition: #getSatisfactionCriteria, #getSatisfactionWith
+
+
 
 function AlternationItemHasCondition( subjectName, metadata ) {
 	this.subjectName = subjectName;
 	this.metadata = metadata;
 }
 
-AlternationItemIsCondition.prototype.fulfilledBy = function( environment ) {
+AlternationItemIsCondition.prototype.fulfilledBy = function( environment, environmentMemo ) {
 	// true if the variable is defined
 	// and if it has the metadata in this.metadata also defined 
 	// and if for each mapping on this.metadata if the variable has the same metadata mappings.
 	// (all values are strings, here...)
 };
 
+// TODO: AlternationItemHasCondition: #getSatisfactionCriteria, #getSatisfactionWith
+
+
+
 function AlternationItemEqualsCondition( subjectName, alternationSet ) {
 	this.subjectName = subjectName;
 	this.value = alternationSet;
 }
 
-AlternationItemIsCondition.prototype.fulfilledBy = function( environment ) {
+AlternationItemIsCondition.prototype.fulfilledBy = function( environment, environmentMemo ) {
 	// TODO: Implement necessary pipework for isCondition.fulfilledBy.
 	// true if the variable is defined
 	// and if its selected value is the same as
@@ -426,3 +464,5 @@ AlternationItemIsCondition.prototype.fulfilledBy = function( environment ) {
 	// This is one case actually where a selectAll would be handy.
 	return false;
 };
+
+// TODO: AlternationItemEqualsCondition: #getSatisfactionCriteria, #getSatisfactionWith
