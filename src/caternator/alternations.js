@@ -40,27 +40,23 @@ AlternationSet.prototype.getSatisfactionCriteria = function( environment ) {
 	this.items.forEach( function tallyVariablesOf( item ) {
 		var criteria = item.getSatisfactionCriteria( environment );
 
-		util.forEachOwnProperty( tallies, function forKind( pair, kind ) {
-			util.forEachOwnProperty( pair, function forRequirement( tally, requirement ) {
-				criteria[ kind ][ tally ].forEach( tallyNamedItem( name ) {
-					tally.incr( name );
-				});
-			});
+		criteria.forEach( function nameOfTypeAndReq( name, type, requirement ) {
+			tally[ type ][ requirement ].incr( name );
 		});
 	});
 
-	util.forEachOwnProperty( tallies, function tallyKind( pair, kind ) {
+	util.forEachOwnProperty( tallies, function tallyType( pair, type ) {
 		pair.required.forEach( function tallyRequired( count, name ) {
 			if( count == this.items.count ) {
-				criteria[ kind ].required.push( name );
+				criteria[ type ].required.push( name );
 			}
 			else {
-				criteria[ kind ].optional.push( name );
+				criteria[ type ].optional.push( name );
 			}
 		}, this );
 
 		pair.optional.forEach( function tallyOptional( count, name ) {
-			criteria[ kind ].optional.push( name );
+			criteria[ type ].optional.push( name );
 		});
 	}, this );
 
