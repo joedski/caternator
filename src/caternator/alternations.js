@@ -92,14 +92,15 @@ AlternationSet.prototype.select = function( environment, environmentMemo ) {
 		return item.conditional && item.condition.fulfilledBy( environment );
 	});
 
+	// Otherwise, non-conditional.
 	if( unsortedItems.length === 0 ) {
-		// Otherwise, non-conditional.
 		unsortedItems = this.items.filter( function getConditionalItems( item ) {
 			return ! item.conditional;
 		});
 	}
 
 	unsortedItems.sort( byPreference );
+
 	mostPreferredItems = unsortedItems.filter( function onlyMostPreferred( item ) {
 		return byPreference( item, unsortedItems[ 0 ] ) === 0;
 	});
@@ -318,6 +319,9 @@ AlternationFunctionArguments.prototype.select = function( environment, environme
 	return environmentMemo.getFunctionArguments();
 };
 
+// Included for regularity only.  Functions already handle the satisfaction themselves,
+// therefore the Function Arguments Item which appears with an Alternation Item's Contents
+// should always report itself satisfied.
 AlternationFunctionArguments.prototype.getSatisfactionCriteria = function( environment ) {
 	return new satisfaction.SatisfactionCriteria();
 };
@@ -348,7 +352,6 @@ Result.prototype.toString = function() {
 
 ////////////////////////
 
-// TODO: Metadata?
 function SelectionResult( options ) {
 	Result.call( this, options );
 
@@ -357,6 +360,7 @@ function SelectionResult( options ) {
 
 SelectionResult.prototype = new Result();
 
+// TODO: Rewrite to handle whitespace when we get around to that.
 SelectionResult.prototype.toString = function() {
 	return this.itemResults.map( function toStringItemResults( itemResult ) {
 		return itemResult.toString();
