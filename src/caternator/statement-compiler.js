@@ -1,5 +1,6 @@
 var statements = require( './statements' );
 var util = require( './util' );
+var alternationCompiler = require( './alternation-compiler' );
 
 function compile( items ) {
 	var statement = null;
