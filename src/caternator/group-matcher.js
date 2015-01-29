@@ -1,6 +1,8 @@
 // caternator/group-matcher - Matches sequences of items inside of groups.
 // Returns a match object in sort of the same way the a regexp does, in that it doesn't if there's no match.
 // group-matcher.matchItems does NOT create any Groups, merely matches the data for use therein.
+// I didn't know this at the time of writing but this is a very (very) rudimentary compiler compiler.
+// Go me?
 
 // Exports:
 // - matchItems( items :Array ) :GroupMatchResult

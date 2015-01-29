@@ -12,18 +12,40 @@
 // Plain Group
 // -----------
 // 
-// The most basic of Groups, this has the following properties:
-// - groupType = 'plain'
-// - items: Array; all of the items contained within this Group.
-//     Any sub-groups in this list of items are also run through identifyGroups().
+// {
+//     type: 'group',
+//     groupType: 'plain',
+//     items: [...]<Group|Token>
+//         All of the items contained within this Group.
+//         Any sub-groups in this list of items are also run through identifyGroups().
+// }
 // 
 // Alternation Delimiter Group
 // ---------------------------
 // 
 // Alternation Delimiters may have an Optional Condition Group attached to them.
 // They themselves have the following properties:
-// - groupType = 'alternationDelimiter'
-// - condition: ConditionGroup | null; an optional Condition Group.
+// 
+// {
+//     type: 'group',
+//     groupType: 'alternationDelimiter',
+//     condition: ConditionGroup|null = {
+//          type: 'group',
+//          groupType: 'condition',
+//          subject: String
+//          predicate: PredicateGroup = {
+//              type: 'group',
+//              groupType: 'predicate',
+//              predicateType: String = 'is' | 'has',
+//              negated: Boolean
+//              // is-type
+//              metadatas: Array<String>
+//              // has-type
+//              metadatas: Array<String>
+//              value: PlainGroup
+//         }
+//     }
+// }
 // 
 // Condition Group
 // ---------------
@@ -53,6 +75,8 @@
 //     should be negated.
 // - metadatas: Array<String>; The metadata names that the subject should have defined on it
 //     in order for this Predicate to evaluate to True.
+//     
+// TODO: Is-type Predicates should use a value:PlainGroup for comparison.  The metadatas defined on the predicate value will determine what metadatas should be defined on the targe.
 // 
 // ### 'has'-Type Predicates
 // 
@@ -86,8 +110,23 @@
 // ----------
 // 
 // The simplest of all Groups, this represents an empty or null value.
+// Special case of the Plain Group.
 // It has but the following additional property:
-// - groupType = 'null'
+// 
+// {
+//     type: 'group',
+//     groupType: 'null'
+// }
+// 
+// Function Call Group
+// -------------------
+// 
+// {
+//     type: 'group',
+//     groupType: 'functionCall',
+//     name: String // Function name
+//     arguments: PlainGroup|NullGroup|FunctionCallGroup // Chained calls.
+// }
 
 var tokenizer = require( './tokenizer' );
 var matcher = require( './group-matcher' );
@@ -186,6 +225,13 @@ function conditionGroup( groupMatchResult ) {
 	});
 }
 
+function functionCallGroupFromNameAndArgs( name, args ) {
+	return group( 'functionCall', {
+		name: name,
+		arguments: args
+	});
+}
+
 function predicateGroup( predicateGroupMatchResult ) {
 	return group( 'predicate', {
 		// one of 'predicateEquals', 'predicateIs', 'predicateIsNot', 'predicateHas', 'predicateDoesNotHave'.
@@ -245,12 +291,22 @@ function normalizeFunctionCalls( items ) {
 			if( ! nextItem ) {
 				nextItem = nullGroup();
 			}
-			else if( nextItem.type != 'group' || nextItem.groupType != 'plain' ) {
+			else if( nextItem.type != 'group' ) {
 				nextItem = plainGroupFromIdentifiedItems([ nextItem ]);
+			}
+			else switch( nextItem.groupType ) {
+				case 'plain':
+				case 'functionCall':
+				case 'null':
+					break;
+
+				default:
+					nextItem = plainGroupFromIdentifiedItems([ nextItem ]);
+					break;
 			}
 
 			normalizedItemsReversed.pop();
-			normalizedItemsReversed.push( plainGroupFromIdentifiedItems([ item, nextItem ]) );
+			normalizedItemsReversed.push( functionCallGroupFromNameAndArgs( item.value, nextItem ) );
 		}
 		else {
 			normalizedItemsReversed.push( item );

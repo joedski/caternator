@@ -1,4 +1,5 @@
 var alternations = require( './alternations' );
+var util = require( './util' );
 
 ////////////////
 // Classes
@@ -39,19 +40,19 @@ FunctionStatement.prototype = new Statement();
 function Statement( items, metadatas ) {
 	// Extensions set this.type.
 	if( items ) {
-		this.alternationSet = new alternations.AlternationSet( items, metadatas || [] );
+		this.alternationSet = new alternations.AlternationSet( items, metadatas || new util.Map );
 	}
 
-	this.metadatas = new MetadataMap( metadatas );
+	this.metadatas = new util.Map( metadatas );
 }
 
 Statement.prototype.alternationSet = null;
 
 
 
-function MetadataMap( metadatas ) {
-	metadatas.forEach( this.add, this );
-}
+// function MetadataMap( metadatas ) {
+// 	metadatas.forEach( this.add, this );
+// }
 
 
 

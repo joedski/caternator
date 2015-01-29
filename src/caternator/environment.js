@@ -42,6 +42,9 @@ Environment.prototype.hasFunction = function( functionName ) {
 	return this.functionMap.has( functionName );
 };
 
+// TODO: Add thing to set up native function.
+// TODO: Figure out what all wrapping needs to be done around a native function to present a consistent interface.
+
 
 
 function EnvironmentMemo() {

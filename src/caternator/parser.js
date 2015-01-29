@@ -3,6 +3,7 @@
 var tokenizer = require( './tokenizer' );
 var nester = require( './nester' );
 var grouper = require( './grouper' );
+var statementCompiler = require( './statement_compiler' );
 
 // String -> Thing
 function parse( input ) {

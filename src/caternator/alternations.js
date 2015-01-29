@@ -103,8 +103,8 @@ AlternationSet.prototype.select = function( environment, environmentMemo ) {
 
 	// Pick only one item.
 	selectedItem = mostPreferredItems[ Math.random() * mostPreferredItems.length << 0 ];
-
 	itemResults = selectedItem.selectContents( environment, environmentMemo );
+
 	result = new SelectionResult({
 		environment: environment,
 		environmentMemo: environmentMemo,
