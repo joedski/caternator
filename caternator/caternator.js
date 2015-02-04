@@ -23,8 +23,9 @@ function Caternator() {
 }
 
 function compile( programString ) {
+	// For now, it will suffice to simply tokenize the whole document and parse only on flush.
 	var tokenizer = getNewTokenizer.call( this );
-	var parser = new parser.CaternatorParser( tokenizer );
+	var parser = null; //new parser.CaternatorParser( tokenizer );
 	var program = parser.parse( programString );
 
 	return program;
