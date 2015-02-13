@@ -1,7 +1,10 @@
 var productions = require( './productions' );
 
+// These functions can let you more or less translate EBNF into JS.
+// That means there's probably a minimal amount of code needed to reduce how much you actually have to write.
+
 // Usage:
-// expect.optionally( expect.terminal({ type: 'lineEnd' }) )
+// expect.optional( expect.terminal({ type: 'lineEnd' }) )
 // This returns an expectation function which accepts tokens
 // and outputs an anonymous production containing either...
 // - a single terminal production
@@ -58,7 +61,7 @@ function expectRepetitionOf( repeatedExpectation, tokens ) {
 
 	production = new productions.AnonymousProduction( 'repetition' );
 
-	while( nextProduction = repeatedExpectation( currentRest ) ) {
+	while( (nextProduction = repeatedExpectation( currentRest )) ) {
 		production.push( nextProduction );
 		currentRest = restOfTokensAfter( currentRest, nextProduction );
 	}
@@ -69,11 +72,10 @@ function expectRepetitionOf( repeatedExpectation, tokens ) {
 // Covers optionals
 // Function, Array<Tokens> -> AnonymousProduction
 // Always returns at least an empty Production.
-function expectOptionally( optionalSequenceExpectation, tokens ) {
+function expectOptional( optionalSequenceExpectation, tokens ) {
 	var production, optionalProduction;
 
 	production = new productions.AnonymousProduction( 'option' );
-	optionalProduction = optionalSequenceExpectation( tokens );
 
 	if( optionalProduction ) {
 		production.push( optionalProduction );
@@ -131,6 +133,9 @@ function expectTerminal( terminal, tokens ) {
 		if( typeof terminal.value == 'string' ) {
 			passed = passed && terminal.value == t.value;
 		}
+		else if( terminal instanceof RegExp ) {
+			passed = passed && terminal.test( t.value );
+		}
 	}
 
 	if( passed ) {
@@ -144,6 +149,6 @@ function expectTerminal( terminal, tokens ) {
 exports.restAfter = restOfTokensAfter;
 exports.firstOf = currifyGeneralExpectation( expectFirstOf );
 exports.repetitionOf = currifyGeneralExpectation( expectRepetitionOf );
-exports.optionally = currifyGeneralExpectation( expectOptionally );
+exports.optional = currifyGeneralExpectation( expectOptional );
 exports.sequence = currifyGeneralExpectation( expectSequence );
 exports.terminal = currifyGeneralExpectation( expectTerminal );

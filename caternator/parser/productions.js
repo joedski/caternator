@@ -16,10 +16,15 @@ Object.defineProperty( Production.prototype, 'length', {
 	enumerable: true,
 	configurable: true,
 	get: function() {
-		var l = 0, i = 0, cl = this.contents.length;
+		var l = 0, i = 0, cl = this.contents.length, citem;
 
 		for( i = 0; i < cl; ++i ) {
-			l += this.contents[ i ].length;
+			citem = this.contents[ i ];
+
+			if( citem instanceof Production )
+				l += this.contents[ i ].length;
+			else
+				l += 1;
 		}
 
 		return l;
@@ -50,6 +55,8 @@ Production.prototype.push = function( subproduction ) {
 
 
 
+////////
+
 function AnonymousProduction( ruleName, initialContents ) {
 	Production.call( this, '<' + ruleName + '>', initialContents );
 }
@@ -59,11 +66,15 @@ AnonymousProduction.prototype.anonymous = true;
 
 
 
+////////
+
 function TerminalProduction( terminal ) {
 	Production.call( this, '<terminal>', [ terminal ] );
+	this.terminal = terminal;
 }
 
 TerminalProduction.prototype = new Production( '<terminal>' );
+TerminalProduction.prototype.terminal = null;
 
 Object.defineProperty( TerminalProduction.prototype, 'length', {
 	enumerable: true,

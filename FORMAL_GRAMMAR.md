@@ -28,29 +28,27 @@ Rules
 
     program = statement-seq, [ line-end ];
     statement-seq = statement, { line-end, statement };
-    statement = var-statement | fun-statement | out-statement | empty-statement;
-    
+    statement = var-statement | fun-statement | out-statement;
+
     var-statement = var, { meta-group }, assign, plain-group-item-seq;
     fun-statement = fun, { meta-group }, assign, plain-group-item-seq;
     out-statement = plain-group-item-seq;
-    empty-statement = <nothing>;
-    
-### The Important Stuff
+
+### Important Stuff
 
     meta-group = meta-seq | group-begin, ( meta-seq | meta-assign-group ), group-end;
     meta-seq = meta, { meta };
-    meta-assign-group = meta, assign, plain-group-item-seq;
-    
-    plain-group = group-begin, plain-group-item-seq, group-end;
-    plain-group-item-seq = [ item-delim ], item-seq, { item-delim, item-seq };
-    
-    item-delim = group-begin, item-delim-item-seq, group-end;
+    meta-assign-group = meta, assign, item-seq;
+
+    plain-group = group-begin, item-seq, group-end;
+
+    item-delimiter = group-begin, item-delim-item-seq, group-end;
     item-delim-item-seq = "or", [ condition ] | condition;
-    item-seq = { item };
-    item = { plain-group | meta-group | word | var | fun-call | fun-arg };
-    
+    item-seq = item, { item };
+    item = var | fun-call | fun-arg | meta-group | item-delimiter | plain-group
+
     condition = "if", var, condition-predicate;
-    condition-predicate = "is", plain-group-item-seq | "has", metadata-group, { metadata-group }
+    condition-predicate = "is", [ item-seq ] | "has", metadata-group, { metadata-group }
     fun-call = fun, ( fun-call | item );
 
 In later versions, the `item` rule will include white space, as significant whitespace is the only way to intuitively handle certain cases in a regular manner.
