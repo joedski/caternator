@@ -30,9 +30,9 @@ Rules
     statement-seq = statement, { line-end, statement };
     statement = var-statement | fun-statement | out-statement;
 
-    var-statement = var, { meta-group }, assign, plain-group-item-seq;
-    fun-statement = fun, { meta-group }, assign, plain-group-item-seq;
-    out-statement = plain-group-item-seq;
+    var-statement = var, { meta-group }, assign, item-seq;
+    fun-statement = fun, { meta-group }, assign, item-seq;
+    out-statement = item-seq;
 
 ### Important Stuff
 

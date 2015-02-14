@@ -91,7 +91,10 @@ Tokenizer.prototype.addRule = function( ruleTest, tokenType, ignored ) {
 Tokenizer.prototype.addRules = function( ruleList ) {
 	var _this = this;
 
-	forEach( ruleList, this.addRule, this );
+	// forEach( ruleList, this.addRule, this );
+	ruleList.forEach( function applyAddRule( rule ) {
+		this.addRule.apply( this, rule );
+	}, this );
 };
 
 Tokenizer.prototype.ignoreType = function( tokenType, ignored ) {
@@ -164,7 +167,11 @@ Tokenizer.prototype.matchRules = function( input ) {
 };
 
 Tokenizer.prototype.emitToken = function( ruleMatch ) {
-	this.onToken({ type: ruleMatch.rule.type, value: ruleMatch.slice });
+	var token = { type: ruleMatch.rule.type, value: ruleMatch.slice };
+
+	if( this.ignored[ token.type ] ) return;
+	
+	this.onToken( token );
 };
 
 Tokenizer.prototype.flush = function() {

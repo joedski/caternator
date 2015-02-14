@@ -5,8 +5,8 @@
  * Also the short token names were expanded. ('variable' instead of 'var'.)
  */
 
-var productions = require( './productions' );
-var expect = require( './expect' );
+var productions = require( 'expectation-parser/productions' );
+var expect = require( 'expectation-parser' );
 
 
 
@@ -36,7 +36,7 @@ function expectProgram( tokens ) {
 function expectStatementSeq( tokens ) {
 	var production = expect.sequence([
 		expectStatement,
-		expect.repetitionOf( expect.sequence([
+		expect.repetition( expect.sequence([
 			expect.terminal({ type: 'lineEnd' }),
 			expectStatement
 		]))
@@ -46,7 +46,7 @@ function expectStatementSeq( tokens ) {
 }
 
 function expectStatement( tokens ) {
-	var production = expect.firstOf([
+	var production = expect.alternation([
 		expectVarStatement,
 		expectFunStatement,
 		expectOutStatement
@@ -58,7 +58,7 @@ function expectStatement( tokens ) {
 function expectVarStatement( tokens ) {
 	var production = expect.sequence([
 		expect.terminal({ type: 'variable' }),
-		expect.repetitionOf( expectMetaGroup ),
+		expect.repetition( expectMetaGroup ),
 		expect.terminal({ type: 'assign' }),
 		expectItemSeq
 	], tokens );
@@ -69,7 +69,7 @@ function expectVarStatement( tokens ) {
 function expectFunStatement( tokens ) {
 	var production = expect.sequence([
 		expect.terminal({ type: 'function' }),
-		expect.repetitionOf( expectMetaGroup ),
+		expect.repetition( expectMetaGroup ),
 		expect.terminal({ type: 'assign' }),
 		expectItemSeq
 	], tokens );
@@ -80,7 +80,11 @@ function expectFunStatement( tokens ) {
 function expectOutStatement( tokens ) {
 	var production = expectItemSeq( tokens );
 
-	return newProductionOrNull( 'outStatement', production );
+	// return newProductionOrNull( 'outStatement', production );
+	if( production )
+		return new productions.Production( 'outStatement', [ production ] );
+	else
+		return null;
 }
 
 
@@ -88,11 +92,11 @@ function expectOutStatement( tokens ) {
 //////// Metas ////////
 
 function expectMetaGroup( tokens ) {
-	var production = expect.firstOf([
+	var production = expect.alternation([
 		expectMetaSeq,
 		expect.sequence([
 			expect.terminal({ type: 'groupBegin' }),
-			expect.firstOf([
+			expect.alternation([
 				expectMetaSeq,
 				expectMetaAssignGroup
 			]),
@@ -106,7 +110,7 @@ function expectMetaGroup( tokens ) {
 function expectMetaSeq( tokens ) {
 	var production = expect.sequence([
 		expect.terminal({ type: 'metadata' }),
-		expect.repetitionOf( expect.terminal({ type: 'metadata' }) )
+		expect.repetition( expect.terminal({ type: 'metadata' }) )
 	], tokens );
 
 	return newProductionOrNull( 'metaSeq', production );
@@ -151,7 +155,7 @@ function expectItemDelimiter( tokens ) {
 }
 
 function expectItemDelimiterItemSeq( tokens ) {
-	var production = expect.firstOf([
+	var production = expect.alternation([
 		expect.sequence([
 			expect.terminal({ type: 'text', value: /^or$/i }),
 			expect.optional( expectCondition )
@@ -165,14 +169,14 @@ function expectItemDelimiterItemSeq( tokens ) {
 function expectItemSeq( tokens ) {
 	var production = expect.sequence([
 		expectItem,
-		expect.repetitionOf( expectItem )
+		expect.repetition( expectItem )
 	], tokens );
 
 	return newProductionOrNull( 'itemSeq', production );
 }
 
 function expectItem( tokens ) {
-	var production = expect.firstOf([
+	var production = expect.alternation([
 		expect.terminal({ type: 'variable' }),
 		expectFunctionCall,
 		expect.terminal({ type: 'functionArguments' }),
@@ -200,7 +204,7 @@ function expectCondition( tokens ) {
 }
 
 function expectConditionPredicate( tokens ) {
-	var production = expect.firstOf([
+	var production = expect.alternation([
 		expect.sequence([
 			expect.terminal({ type: 'text', value: /^is$/i }),
 			expectItemSeq
@@ -208,7 +212,7 @@ function expectConditionPredicate( tokens ) {
 		expect.sequence([
 			expect.terminal({ type: 'text', value: /^has$/i }),
 			expectMetaGroup,
-			expect.repetitionOf( expectMetaGroup )
+			expect.repetition( expectMetaGroup )
 		])
 	], tokens );
 
@@ -218,7 +222,7 @@ function expectConditionPredicate( tokens ) {
 function expectFunctionCall( tokens ) {
 	var production = expect.sequence([
 		expect.terminal({ type: 'function' }),
-		expect.firstOf([
+		expect.alternation([
 			expectFunctionCall,
 			expectItem
 		])

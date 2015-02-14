@@ -1,0 +1,25 @@
+{
+  "name": "caternator",
+  "version": "0.0.1",
+  "description": "Overwrought random phrase generator.",
+  "main": "./caternator/index",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joedski/caternator.git"
+  },
+  "keywords": [
+    "random-generator"
+  ],
+  "author": "Joseph Sikorski <joedski@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/joedski/caternator/issues"
+  },
+  "homepage": "https://github.com/joedski/caternator",
+  "dependencies": {
+    "expectation-parser": "git://github.com/joedski/expectation-parser.git"
+  }
+}
