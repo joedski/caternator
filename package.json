@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/joedski/caternator",
   "dependencies": {
-    "expectation-parser": "git://github.com/joedski/expectation-parser.git"
+    "expectation-parser": "git://github.com/joedski/expectation-parser.git",
+    "no-frills-tokenizer": "git://github.com/joedski/no-frills-tokenizer.git"
   }
 }

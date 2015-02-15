@@ -17,7 +17,8 @@ console.log( r.toString() );
 
  */
 
-var tokenizer = require( '../tokenizer/tokenizer' );
+var tokenizer = require( 'no-frills-tokenizer' );
+var parser = require( './parser' );
 
 function Caternator() {
 }

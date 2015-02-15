@@ -21,162 +21,137 @@ exports.expectVarStatement = expectVarStatement;
 //////// Entry Point ////////
 
 function expectProgram( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'program', expect.sequence([
 		expectStatementSeq,
 		expect.optional( expect.terminal({ type: 'lineEnd' }) )
-	], tokens );
-
-	return newProductionOrNull( 'program', production );
-}
+	]), tokens );
+};
 
 
 
 //////// Statements ////////
 
 function expectStatementSeq( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'statementSeq', expect.sequence([
 		expectStatement,
 		expect.repetition( expect.sequence([
 			expect.terminal({ type: 'lineEnd' }),
 			expectStatement
 		]))
-	], tokens );
-
-	return newProductionOrNull( 'statementSeq', production );
-}
+	]), tokens );
+};
 
 function expectStatement( tokens ) {
-	var production = expect.alternation([
+	// Anonymous!
+	return expect.alternation([
 		expectVarStatement,
 		expectFunStatement,
 		expectOutStatement
 	], tokens );
-
-	return newProductionOrNull( 'statement', production );
-}
+};
 
 function expectVarStatement( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'varStatement', expect.sequence([
 		expect.terminal({ type: 'variable' }),
 		expect.repetition( expectMetaGroup ),
 		expect.terminal({ type: 'assign' }),
 		expectItemSeq
-	], tokens );
-
-	return newProductionOrNull( 'varStatement', production );
-}
+	]), tokens );
+};
 
 function expectFunStatement( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'funStatement', expect.sequence([
 		expect.terminal({ type: 'function' }),
 		expect.repetition( expectMetaGroup ),
 		expect.terminal({ type: 'assign' }),
 		expectItemSeq
-	], tokens );
-
-	return newProductionOrNull( 'funStatement', production );
-}
+	]), tokens );
+};
 
 function expectOutStatement( tokens ) {
-	var production = expectItemSeq( tokens );
-
-	// return newProductionOrNull( 'outStatement', production );
-	if( production )
-		return new productions.Production( 'outStatement', [ production ] );
-	else
-		return null;
-}
+	return productionWithNameOrNull( 'outStatement', expectItemSeq, tokens );
+};
 
 
 
 //////// Metas ////////
 
 function expectMetaGroup( tokens ) {
-	var production = expect.alternation([
+	return productionWithNameOrNull( 'metaGroup', expect.alternation([
 		expectMetaSeq,
 		expect.sequence([
 			expect.terminal({ type: 'groupBegin' }),
-			expect.alternation([
-				expectMetaSeq,
-				expectMetaAssignGroup
-			]),
+			// this was another alternation, but currently
+			// it doesn't behave right...
+			expectMetaSeq,
+			expect.terminal({ type: 'groupEnd' })
+		]),
+		expect.sequence([
+			expect.terminal({ type: 'groupBegin' }),
+			expectMetaAssignGroup,
 			expect.terminal({ type: 'groupEnd' })
 		])
-	], tokens );
-
-	return newProductionOrNull( 'metaGroup', production );
-}
+	]), tokens );
+};
 
 function expectMetaSeq( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'metaSeq', expect.sequence([
 		expect.terminal({ type: 'metadata' }),
 		expect.repetition( expect.terminal({ type: 'metadata' }) )
-	], tokens );
-
-	return newProductionOrNull( 'metaSeq', production );
-}
+	]), tokens );
+};
 
 function expectMetaAssignGroup( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'metaAssignGroup', expect.sequence([
 		expect.terminal({ type: 'metadata' }),
 		expect.terminal({ type: 'assign' }),
 		expectItemSeq
-	], tokens );
-
-	return newProductionOrNull( 'metaAssignGroup', production );
-}
+	]), tokens );
+};
 
 
 
 //////// Plain Group ////////
 
 function expectPlainGroup( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'plainGroup', expect.sequence([
 		expect.terminal({ type: 'groupBegin' }),
 		expectItemSeq,
 		expect.terminal({ type: 'groupEnd' })
-	], tokens );
-
-	return newProductionOrNull( 'plainGroup', production );
-}
+	]), tokens );
+};
 
 
 
 //////// Items ////////
 
 function expectItemDelimiter( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'itemDelimiter', expect.sequence([
 		expect.terminal({ type: 'groupBegin' }),
 		expectItemDelimiterItemSeq,
 		expect.terminal({ type: 'groupEnd' }),
-	], tokens );
-
-	return newProductionOrNull( 'itemDelimiter', production );
-}
+	]), tokens );
+};
 
 function expectItemDelimiterItemSeq( tokens ) {
-	var production = expect.alternation([
+	return productionWithNameOrNull( 'itemDelimiterItemSeq', expect.alternation([
 		expect.sequence([
 			expect.terminal({ type: 'text', value: /^or$/i }),
 			expect.optional( expectCondition )
 		]),
 		expectCondition
-	], tokens );
-
-	return newProductionOrNull( 'itemDelimiterItemSeq', production );
-}
+	]), tokens );
+};
 
 function expectItemSeq( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'itemSeq', expect.sequence([
 		expectItem,
 		expect.repetition( expectItem )
-	], tokens );
-
-	return newProductionOrNull( 'itemSeq', production );
-}
+	]), tokens );
+};
 
 function expectItem( tokens ) {
-	var production = expect.alternation([
+	return productionWithNameOrNull( 'item', expect.alternation([
 		expect.terminal({ type: 'variable' }),
 		expectFunctionCall,
 		expect.terminal({ type: 'functionArguments' }),
@@ -184,27 +159,23 @@ function expectItem( tokens ) {
 		expectMetaGroup,
 		expectItemDelimiter,
 		expectPlainGroup
-	], tokens );
-
-	return newProductionOrNull( 'item', production );
-}
+	]), tokens );
+};
 
 
 
 //////// Conditions ////////
 
 function expectCondition( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'condition', expect.sequence([
 		expect.terminal({ type: 'text', value: /^if$/i }),
 		expect.terminal({ type: 'variable' }),
 		expectConditionPredicate
-	], tokens );
-
-	return newProductionOrNull( 'condition', production );
-}
+	]), tokens );
+};
 
 function expectConditionPredicate( tokens ) {
-	var production = expect.alternation([
+	return productionWithNameOrNull( 'conditionPredicate', expect.alternation([
 		expect.sequence([
 			expect.terminal({ type: 'text', value: /^is$/i }),
 			expectItemSeq
@@ -214,33 +185,44 @@ function expectConditionPredicate( tokens ) {
 			expectMetaGroup,
 			expect.repetition( expectMetaGroup )
 		])
-	], tokens );
-
-	return newProductionOrNull( 'conditionPredicate', production );
-}
+	]), tokens );
+};
 
 function expectFunctionCall( tokens ) {
-	var production = expect.sequence([
+	return productionWithNameOrNull( 'functionCall', expect.sequence([
 		expect.terminal({ type: 'function' }),
 		expect.alternation([
 			expectFunctionCall,
 			expectItem
 		])
-	], tokens );
-
-	return newProductionOrNull( 'functionCall', production );
+	]), tokens );
 }
 
 
 
 ////////////////////////////////
 
+function productionWithNameOrNull( name, expectation, tokens ) {
+	var production = expectation( tokens );
+
+	return newProductionOrNull( name, production );
+}
+
+function defineExpectation( name, expectation ) {
+	return function namedExpectation( tokens ) {
+		var production = expectation( tokens );
+
+		return newProductionOrNull( name, production );
+	};
+}
+
 function newProductionOrNull( ruleName, production ) {
 	if( production ) {
 		if( production.anonymous )
 			return new productions.Production( ruleName, production.contents );
 		else
-			return production;
+			// This only occurs in one case, with the out statement.
+			return new productions.Production( ruleName, [ production ] );
 	}
 	else {
 		return null;
