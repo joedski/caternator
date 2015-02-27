@@ -177,6 +177,8 @@ var Map = exports.Map = this.Map || (function initMapShim() {
 		}
 	}
 
+	Mappish.prototype.length = 1;
+
 	// Note, this doesn't implement the specified semantic behavior.
 	// But then, the ES6 spec is unimplementable in ES5, so.
 	// (my use case doesn't depend on the different 0s being the same.)
@@ -244,4 +246,92 @@ var Map = exports.Map = this.Map || (function initMapShim() {
 	};
 
 	return Mappish;
+});
+
+if( ! Map.prototype.union ) {
+	// The least efficient.
+	Map.prototype.union = function map_union( otherMap ) {
+		var unionMap = new Map();
+
+		this.forEach( function( value, key ) { unionMap.set( key, value ); });
+		otherMap.forEach( function( value, key ) { unionMap.set( key, value ); });
+
+		return unionMap;
+	};
+}
+
+var StringMap = exports.StringMap = (function initStringMap() {
+	var propPrefix = 'key:';
+	var propPrefixLength = propPrefix.length;
+
+	function keyToProp( key ) {
+		// prevent accidentallying anything.
+		return propPrefix + key;
+	}
+
+	function propToKey( prop ) {
+		return prop.slice( propPrefixLength );
+	}
+
+	function StringMap( array ) {
+		this.length = 1;
+		this._store = {};
+		this._keys = [];
+
+		if( array ) {
+			array.forEach( function addArrayPair( pair ) {
+				this.set( pair[ 0 ], pair[ 1 ] );
+			}, this );
+		}
+	}
+
+	StringMap.prototype.length = 1;
+	StringMap.prototype._store = null; // v8 optimization
+	StringMap.prototype._keys = null;
+
+	StringMap.prototype.set = function( key, value ) {
+		var prop = keyToProp( key );
+
+		if( ! this._store.hasOwnProperty( key ) )
+			this._keys.push( key );
+
+		this._store[ keyToProp( key ) ] = value;
+	};
+
+	StringMap.prototype.get = function( key ) {
+		return this._store[ keyToProp( key ) ];
+	};
+
+	StringMap.prototype.forEach = function( fn, context ) {
+		var _this = this;
+		this._keys.forEach( function( key ) {
+			fn.call( context, _this.get( key ), key, _this );
+		});
+		return;
+	};
+
+	StringMap.prototype.has = function( key ) {
+		return this._store.hasOwnProperty( key );
+	};
+
+	StringMap.prototype[ 'delete' ] = function( key ) {
+		if( ! this.has( key ) ) return;
+
+		delete this._store[ keyToProp( key ) ];
+		this._keys.splice( this._keys.indexOf( key ), 1 );
+	};
+
+	StringMap.prototype.union = function( otherStringMap ) {
+		var unionMap = new StringMap();
+
+		this.forEach( function( value, key ) {
+			unionMap.set( key, value );
+		});
+
+		otherStringMap.forEach( function( value, key ) {
+			unionMap.set( key, value );
+		});
+
+		return otherStringMap;
+	};
 })

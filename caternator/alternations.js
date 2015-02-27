@@ -3,6 +3,7 @@
 
 var util = require( './util' );
 var Map = this.Map || util.Map;
+var StringMap = util.StringMap;
 var environment = require( './environment' );
 var satisfaction = require( './satisfaction' );
 
@@ -15,7 +16,7 @@ var satisfaction = require( './satisfaction' );
 // alternationItemList :Array, metadata :Map
 function AlternationSet( alternationItemList, metadata ) {
 	this.items = alternationItemList;
-	this.metadata = metadata;
+	this.metadata = metadata || new StringMap();
 }
 
 AlternationSet.prototype.items = null;
