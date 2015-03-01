@@ -179,9 +179,18 @@ var Map = exports.Map = this.Map || (function initMapShim() {
 
 	Mappish.prototype.length = 1;
 
+	Object.defineProperty( Mappish.prototype, 'size', {
+		enumerable: true,
+		configurable: true,
+		get: function() {
+			return this._keys.length;
+		},
+		set: function( newLength ) {}
+	});
+
 	// Note, this doesn't implement the specified semantic behavior.
 	// But then, the ES6 spec is unimplementable in ES5, so.
-	// (my use case doesn't depend on the different 0s being the same.)
+	// (my use case doesn't depend on the different 0s being the same, nor on NaN.)
 	Mappish.prototype.set = function( key, value ) {
 		var index = this._keys.indexOf( key );
 
@@ -288,6 +297,15 @@ var StringMap = exports.StringMap = (function initStringMap() {
 	StringMap.prototype.length = 1;
 	StringMap.prototype._store = null; // v8 optimization
 	StringMap.prototype._keys = null;
+
+	Object.defineProperty( StringMap.prototype, 'size', {
+		enumerable: true,
+		configurable: true,
+		get: function() {
+			return this._keys.length;
+		},
+		set: function( newLength ) {}
+	});
 
 	StringMap.prototype.set = function( key, value ) {
 		var prop = keyToProp( key );

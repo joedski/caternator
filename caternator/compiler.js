@@ -145,10 +145,50 @@ function makeEmptyItemDelimiter() {
 
 function compileItem( itemProduction ) {
 	// recursion can occur here.
-	// due to prior partitioning, the only thing that will not occur here is Production "itemDelimiter".
+	// due to prior partitioning, the following things don't appear here:
+	// - Production "itemDelimiter".
+	// - Production "metaGroup"
 	// Everything else can show up.
 	// result depends on what the item production is.
-	// Terminal "var" -> AlternationVariable
+	// - Terminal "variable" -> AlternationVariable
+	// - Terminal "functionArguments" -> AlternationFunctionArguments
+	// - Terminal "text" -> AlternationTerminal
+	// - Production "functionCall" -> compileFunctionCall
+	// - Production "plainGroup" -> compileItemSequence -> AlternationSet
+
+	if( itemProduction.terminal ) {
+		switch( itemProduction.terminal.type ) {
+			case 'variable': return compileItemVariable( itemProduction );
+			case 'functionArguments': return compileItemFunctionArguments( itemProduction );
+			default: return compileItemTerminal( itemProduction );
+		}
+	}
+
+	else if( itemProduction.ruleName == 'functionCall' ) {
+		return compileFunctionCall( itemProduction );
+	}
+	else if( itemProduction.ruleName == 'plainGroup' ) {
+		// recursion.
+		return compileItemSequence( itemProduction.contents[ 1 ] )
+	}
+
+	throw new Error( "Encountered unexpected production while trying to compile item: " + itemProduction.ruleName );
+}
+
+function compileItemVariable( variableProduction ) {
+	// body...
+}
+
+function compileItemFunctionArguments( functionArgumentsProduction ) {
+	// body...
+}
+
+function compileItemTerminal( terminalProduction ) {
+	// body...
+}
+
+function compileFunctionCall( argument ) {
+	// body...
 }
 
 function compileCondition( conditionProduction ) {
