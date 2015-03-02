@@ -208,14 +208,6 @@ function productionWithNameOrNull( name, expectation, tokens ) {
 	return newProductionOrNull( name, production );
 }
 
-function defineExpectation( name, expectation ) {
-	return function namedExpectation( tokens ) {
-		var production = expectation( tokens );
-
-		return newProductionOrNull( name, production );
-	};
-}
-
 function newProductionOrNull( ruleName, production ) {
 	if( production ) {
 		if( production.anonymous )

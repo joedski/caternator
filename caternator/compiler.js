@@ -176,23 +176,52 @@ function compileItem( itemProduction ) {
 }
 
 function compileItemVariable( variableProduction ) {
-	// body...
+	var variableName = variableProduction.terminal.value;
+	return new alternations.AlternationVariable( variableName );
 }
 
 function compileItemFunctionArguments( functionArgumentsProduction ) {
-	// body...
+	return new alternations.AlternationFunctionArguments();
 }
 
 function compileItemTerminal( terminalProduction ) {
-	// body...
+	return new alternations.AlternationTerminal( terminalProduction.terminal.value );
 }
 
-function compileFunctionCall( argument ) {
-	// body...
+function compileFunctionCall( functionCallProduction ) {
+	var functionName = functionCallProduction.contents[ 0 ];
+	var functionParameter;
+	var functionParameterProduction = functionCallProduction.contents[ 1 ];
+
+	if( functionParameterProduction.ruleName == 'functionCall' ) {
+		functionParameter = compileFunctionCall( functionParameterProduction );
+	}
+	else if( functionParameterProduction.ruleName == 'item' ) {
+		functionParameter = compileItem( functionParameterProduction.contents[ 0 ] );
+	}
+	else {
+		throw new Error( "Encountered unexpected production when trying to compile function call's parameter: " + functionParameterProduction.ruleName );
+	}
+
+	return new alternations.AlternationFunction( functionName, functionParameter );
 }
 
 function compileCondition( conditionProduction ) {
-	// body...
+	var subject = conditionProduction.contents[ 1 ];
+	var predicateProduction = conditionProduction.contents[ 2 ];
+	var type = predicateProduction.contents[ 0 ].terminal.value;
+
+	if( type.toLowerCase() == 'is' ) {
+		return new alternations.AlternationIsCondition( subject, compileItemSequence( predicateProduction.contents[ 1 ] ) );
+	}
+	else if( type.toLowerCase() == 'has' ) {
+		var metadataGroups = predicateProduction.contents.slice( 1 );
+		var metadataMap = metadataMapFromGroups( metadataGroups );
+		return new alternations.AlternationHasCondition( subject, metadataMap );
+	}
+	else {
+		throw new Error( "Encountered unexpected condition type while trying to compile a condition: " + type );
+	}
 }
 
 
